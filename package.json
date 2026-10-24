@@ -1,0 +1,8 @@
+{
+  "name": "cincydose-server",
+  "version": "2.0.0",
+  "private": true,
+  "description": "CincyDose (cincydose.org): passwordless email sign-in with administrator approval. No npm dependencies.",
+  "engines": { "node": ">=22.13" },
+  "scripts": { "start": "node --no-warnings server.js" }
+}

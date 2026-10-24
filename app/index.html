@@ -1,0 +1,1518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+<title>CincyDose</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700&display=swap">
+<script>window.CINCYDOSE_NO_PERSIST = true;</script>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<style>
+/* Layout: clinical two-pane workbench — data entry left (ordered steps), live Bayesian results right; tabs on phones */
+:root{
+  --bg:#f2f5f6; --surface:#ffffff; --sunk:#e9eff1; --ink:#13212a; --muted:#566873; --line:#d4dde2;
+  --accent:#0d676c; --accent-ink:#ffffff; --accent-soft:#dbeeee;
+  --obs:#c24e17; --pop:#7f8f98; --band:rgba(13,103,108,.16); --target:rgba(31,122,63,.10);
+  --good:#1d7a3e; --good-soft:#e0f1e5; --warn:#9a5b00; --warn-soft:#fbefd8; --bad:#b3261b; --bad-soft:#fce4e1;
+  --f-ui:'Public Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --f-num:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1518; --surface:#152025; --sunk:#1b2a30; --ink:#e2ebee; --muted:#93a5ae; --line:#29393f;
+  --accent:#53b8b8; --accent-ink:#04181a; --accent-soft:#163a3c;
+  --obs:#f08b57; --pop:#8b9ba4; --band:rgba(83,184,184,.20); --target:rgba(92,197,129,.10);
+  --good:#62c788; --good-soft:#14301f; --warn:#e4ad52; --warn-soft:#33280f; --bad:#f27d70; --bad-soft:#3a1c19; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1518; --surface:#152025; --sunk:#1b2a30; --ink:#e2ebee; --muted:#93a5ae; --line:#29393f;
+  --accent:#53b8b8; --accent-ink:#04181a; --accent-soft:#163a3c;
+  --obs:#f08b57; --pop:#8b9ba4; --band:rgba(83,184,184,.20); --target:rgba(92,197,129,.10);
+  --good:#62c788; --good-soft:#14301f; --warn:#e4ad52; --warn-soft:#33280f; --bad:#f27d70; --bad-soft:#3a1c19; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--f-ui)}
+.wrap{max-width:1380px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+header.app{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding-block:18px 14px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{width:34px;height:34px;flex:none;border-radius:8px;background:var(--accent);display:grid;place-items:center}
+.brand h1{font-size:19px;font-weight:700;letter-spacing:-.01em;margin:0;text-wrap:balance}
+.brand p{margin:1px 0 0;color:var(--muted);font-size:12.5px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;cursor:pointer}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:7px;padding:7px 12px;font-size:13px;font-weight:600}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.small{padding:5px 9px;font-size:12.5px}
+.link{background:none;border:0;padding:0;color:var(--accent);font-weight:600;font-size:13px}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.banner{margin-top:14px;background:var(--warn-soft);color:var(--ink);border-radius:8px;padding:9px 12px;font-size:13px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.banner b{color:var(--warn)}
+[hidden]{display:none!important}
+.tabs{display:none}
+.layout{display:grid;grid-template-columns:minmax(360px,450px) minmax(0,1fr);gap:22px;align-items:start;margin-top:18px}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.step-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px}
+.step-h .t{display:flex;align-items:baseline;gap:9px}
+.step-n{font:500 12px var(--f-num);color:var(--accent)}
+h2{font-size:15px;font-weight:650;margin:0}
+h3{font-size:13px;font-weight:650;margin:0;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.hint{color:var(--muted);font-size:12.5px;margin:0}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:500;min-width:0}
+input,select{font:inherit;font-size:14px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 8px;min-width:0;width:100%;height:36px}
+input[type=number]{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent)}
+input.bad{border-color:var(--bad)}
+.inline{display:flex;gap:6px}
+.inline > :first-child{flex:1.4}
+.inline > :last-child{flex:1}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);font-weight:500}
+.derived{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{font:12px/1.2 var(--f-num);background:var(--sunk);border-radius:999px;padding:4px 9px;color:var(--ink)}
+.chip span{color:var(--muted);font-family:var(--f-ui)}
+.model-card{background:var(--sunk);border-radius:8px;padding:11px 12px;margin-top:10px;display:grid;gap:3px;font-size:12.5px}
+.model-card .k{color:var(--muted)}
+details.adv{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+details.adv summary{cursor:pointer;font-weight:600;font-size:13px;color:var(--accent);list-style:none}
+details.adv summary::-webkit-details-marker{display:none}
+details.adv summary::before{content:"+ ";font-family:var(--f-num)}
+details.adv[open] summary::before{content:"– "}
+.adv-body{display:grid;gap:14px;margin-top:12px}
+.formula{font:12px/1.5 var(--f-num);background:var(--sunk);padding:8px 10px;border-radius:6px;overflow-x:auto}
+.rows{display:flex;flex-direction:column;gap:6px}
+.row{display:grid;gap:6px;align-items:center}
+.row.dose{grid-template-columns:minmax(0,2.1fr) minmax(0,.85fr) minmax(0,.7fr) 34px}
+.row.lvl{grid-template-columns:minmax(0,2.1fr) minmax(0,1fr) 44px 34px}
+.row.head{font-size:11.5px;color:var(--muted);font-weight:600;letter-spacing:.03em}
+.row .use{display:flex;justify-content:center}
+.x{width:34px;height:36px;border:1px solid transparent;background:none;color:var(--muted);border-radius:6px;font-size:18px;line-height:1}
+.x:hover{border-color:var(--line);color:var(--bad)}
+.add-bar{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+.empty{color:var(--muted);font-size:13px;padding:10px 0}
+.series{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px;background:var(--sunk);padding:10px;border-radius:8px}
+.series .full{grid-column:1/-1}
+/* results */
+.res-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;border-radius:999px;padding:3px 10px;white-space:nowrap}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:14px;border:1px solid var(--line);border-radius:8px}
+.tile{padding:11px 13px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.tile + .tile{border-left:1px solid var(--line)}
+.tile .l{font-size:11.5px;font-weight:600;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.tile .v{font:500 22px/1.15 var(--f-num);font-variant-numeric:tabular-nums}
+.tile .v small{font-size:12px;color:var(--muted);font-family:var(--f-ui);font-weight:500}
+.tile .s{font-size:12px;color:var(--muted)}
+.plot{position:relative;margin-top:14px}
+.plot svg{display:block;width:100%;height:auto;touch-action:pan-y}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.12);white-space:nowrap}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:18px;height:0;vertical-align:middle;margin-right:6px;border-top:2px solid}
+.legend i.dot{width:9px;height:9px;border-radius:50%;border:0}
+.legend i.box{height:10px;border:0}
+.tbl-wrap{overflow-x:auto;margin-top:8px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:right;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11.5px;color:var(--muted);font-weight:600;letter-spacing:.03em}
+th:first-child,td:first-child{text-align:left}
+td{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+td.flag{color:var(--bad);font-weight:600}
+.opts{margin-top:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.opt{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,2fr) minmax(0,1.3fr) auto;gap:12px;align-items:center;padding:10px 12px}
+.opt + .opt{border-top:1px solid var(--line)}
+.opt.sel{background:var(--accent-soft)}
+.opt.headrow{background:var(--sunk);font-size:11.5px;color:var(--muted);font-weight:600;letter-spacing:.03em;padding-block:7px}
+.rg{font-weight:650;font-size:14.5px}
+.rg small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.ms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;font:13px var(--f-num);font-variant-numeric:tabular-nums}
+.ms span{display:block;font:11px var(--f-ui);color:var(--muted)}
+.ms .hit{color:var(--good);font-weight:500}
+.ms .miss{color:var(--bad);font-weight:500}
+.pta{display:flex;align-items:center;gap:8px;font:13px var(--f-num)}
+.bar{flex:1;height:7px;background:var(--sunk);border-radius:4px;overflow:hidden;min-width:40px}
+.bar b{display:block;height:100%;background:var(--accent);border-radius:4px}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);margin-left:6px}
+.regimen{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px}
+.reg-out{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
+.reg-out .cell{background:var(--sunk);border-radius:8px;padding:9px 11px}
+.reg-out .cell .l{font-size:11.5px;color:var(--muted);font-weight:600}
+.reg-out .cell .v{font:500 18px var(--f-num);font-variant-numeric:tabular-nums}
+.times{margin-top:10px;font-size:12.5px;color:var(--muted)}
+.times b{color:var(--ink);font-family:var(--f-num);font-weight:500}
+.alerts{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.alert{display:grid;grid-template-columns:8px 1fr;gap:10px;align-items:baseline;font-size:13px}
+.alert::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--muted);transform:translateY(-1px)}
+.alert.warn::before{background:var(--warn)}
+.alert.bad::before{background:var(--bad)}
+.alert.info::before{background:var(--accent)}
+.placeholder{padding:40px 10px;text-align:center;color:var(--muted)}
+.disclaimer{font-size:12px;color:var(--muted);margin-top:18px;max-width:80ch}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;z-index:30;padding:20px}
+.sheet{background:var(--surface);border-radius:10px;padding:16px;max-width:640px;width:100%;display:grid;gap:10px}
+.sheet textarea{width:100%;min-height:260px;font:12.5px/1.5 var(--f-num);background:var(--sunk);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:10px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;z-index:40}
+@media (max-width:959px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .tabs{display:flex;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px 4px;gap:6px}
+  .tabs button{flex:1;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:8px;font-weight:600;font-size:13.5px}
+  .tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  body[data-tab="inputs"] #results{display:none}
+  body[data-tab="results"] #inputs{display:none}
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+}
+@media (max-width:640px){
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tile:nth-child(3){border-left:0}
+  .tile:nth-child(n+3){border-top:1px solid var(--line)}
+  .opt{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"rg act" "ms ms" "pta pta";gap:8px}
+  .opt .rg{grid-area:rg}.opt .ms{grid-area:ms}.opt .pta{grid-area:pta}.opt .act{grid-area:act}
+  .opt.headrow{display:none}
+  .regimen,.reg-out{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:440px){
+  .grid3{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .row.dose{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 34px}
+  .row.dose .time{grid-column:1/3}
+  .row.dose .x{grid-row:1;grid-column:3}
+  .row.dose.head .h-amt,.row.dose.head .h-inf{display:none}
+  .row.dose{padding-bottom:6px;border-bottom:1px dashed var(--line)}
+  .row.dose.head{border:0;padding:0}
+  .series{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.regimen.r5{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media (max-width:640px){.regimen.r5{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.row.dose .rt{display:flex;gap:6px;min-width:0}
+.row.dose .rt > *{flex:1;min-width:0}
+.row.dose{grid-template-columns:minmax(0,1.9fr) minmax(0,.8fr) minmax(0,1.1fr) 34px}
+@media (max-width:440px){.row.dose{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 34px}}
+.mc-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:4px}
+.sheet.wide{max-width:1000px;max-height:86vh;overflow:auto}
+.lib table td,.lib table th{vertical-align:top;text-align:left;font-family:var(--f-ui);white-space:normal}
+.lib table td:first-child{white-space:normal;min-width:170px}
+.ver{font:11px var(--f-num);color:var(--muted)}
+</style>
+
+
+</head>
+<body>
+
+
+<div class="wrap">
+  <header class="app">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 22 22"><path d="M2 17 C5 4, 7 4, 9 9 S 14 17, 20 6" fill="none" stroke="var(--accent-ink)" stroke-width="2.2" stroke-linecap="round"/><circle cx="9" cy="9" r="2" fill="var(--accent-ink)"/></svg>
+      </div>
+      <div>
+        <h1>CincyDose</h1>
+        <p><span class="ver">v2.0.0</span> · Bayesian individualized dosing · NTI drug library for neonates, children and adults</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btnExample" type="button">Load example</button>
+      <button class="btn" id="btnNew" type="button">New patient</button>
+      <button class="btn primary" id="btnCopy" type="button">Copy summary</button>
+    </div>
+  </header>
+  <div class="banner" id="exBanner" hidden><span><b>Example case.</b> These are sample values, not a real patient. Replace them or start a new patient.</span><button class="link" id="btnNew2" type="button">Start new patient</button></div>
+
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" id="tabIn" aria-selected="true">Patient data</button>
+    <button type="button" role="tab" id="tabOut" aria-selected="false">Dose recommendation</button>
+  </div>
+
+  <div class="layout">
+    <div class="col" id="inputs">
+      <section class="panel" id="secPatient"></section>
+      <section class="panel" id="secModel"></section>
+      <section class="panel" id="secDoses"></section>
+      <section class="panel" id="secLevels"></section>
+      <button class="btn primary" id="btnSee" type="button" style="display:none">See dose recommendation</button>
+    </div>
+
+    <div class="col" id="results">
+      <section class="panel">
+        <div class="res-h"><h2 id="resTitle">Individual PK estimate</h2><span id="fitPill"></span></div>
+        <div id="resBody">
+          <div class="tiles" id="tiles"></div>
+          <div class="plot" id="plotWrap"></div>
+          <div class="legend" id="legend"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="recPanel">
+        <div class="step-h"><div class="t"><h2>Recommended regimens</h2></div><span class="hint" id="targetTxt"></span></div>
+        <p class="hint">Ranked by the probability of reaching the target at steady state, given the remaining uncertainty in this patient's PK.</p>
+        <div class="opts" id="opts"></div>
+      </section>
+
+      <section class="panel">
+        <div class="step-h"><div class="t"><h2>Planned regimen</h2></div><button class="link" id="btnBest" type="button">Reset to top option</button></div>
+        <div class="regimen r5">
+          <label class="f">Dose (mg)<input type="number" id="rDose" min="0" step="any" inputmode="decimal"></label>
+          <label class="f">Every (h)<input type="number" id="rTau" min="1" step="any" inputmode="decimal"></label>
+          <label class="f">Route<select id="rRoute"></select></label>
+          <label class="f">Infusion (h)<input type="number" id="rTinf" min="0" step="any" inputmode="decimal"></label>
+          <label class="f">First dose at<input type="datetime-local" id="rStart"></label>
+        </div>
+        <div class="reg-out" id="regOut"></div>
+        <div class="times" id="regTimes"></div>
+      </section>
+
+      <section class="panel" id="fitPanel">
+        <div class="step-h"><div class="t"><h2>Measured vs predicted levels</h2></div></div>
+        <div class="tbl-wrap" id="fitTable"></div>
+      </section>
+
+      <section class="panel">
+        <div class="step-h"><div class="t"><h2>Checks</h2></div></div>
+        <div class="alerts" id="alerts"></div>
+      </section>
+      <p class="disclaimer">Clinical decision support only. Predictions use published or textbook population models (one- or two-compartment, or Michaelis–Menten), maximum a posteriori (MAP) Bayesian estimation of two individual parameters, and a Laplace approximation for uncertainty. Confirm model parameters against the cited source, confirm dose and sample times, and apply clinical judgment before changing therapy.</p>
+    </div>
+  </div>
+</div>
+
+
+<script>
+/*ENGINE-START*/
+const PK = (() => {
+  const cvToOm = cv => Math.sqrt(Math.log(1 + (cv / 100) ** 2));
+  // unit-bolus central-compartment response, per mg, in mg/L
+  function disp(p) {
+    const k = p.CL / p.V1;
+    if (!(p.Q > 0 && p.V2 > 0)) return { lam: [k], A: [1 / p.V1] };
+    const k10 = k, k12 = p.Q / p.V1, k21 = p.Q / p.V2, s = k10 + k12 + k21;
+    const d = Math.sqrt(Math.max(s * s - 4 * k10 * k21, 0));
+    const a = (s + d) / 2, b = (s - d) / 2;
+    return { lam: [a, b], A: [(a - k21) / (p.V1 * (a - b)), (k21 - b) / (p.V1 * (a - b))] };
+  }
+  const kaFix = (ka, l) => Math.abs(ka - l) < 1e-7 ? ka * 1.0001 : ka;
+  function single(dt, d, p, ds) {
+    if (dt <= 0) return 0;
+    const S = p.S || 1;
+    let c = 0;
+    if (d.route === 'PO') {
+      const t = dt - (p.lag || 0); if (t <= 0) return 0;
+      for (let i = 0; i < ds.lam.length; i++) { const l = ds.lam[i], ka = kaFix(p.ka, l); c += ds.A[i] * ka / (ka - l) * (Math.exp(-l * t) - Math.exp(-ka * t)); }
+      return c * p.F * S * d.amt * p.scale;
+    }
+    const T = Math.max(d.tinf || 0, 1e-3), R = d.amt * S / T;
+    for (let i = 0; i < ds.lam.length; i++) {
+      const l = ds.lam[i], a = ds.A[i] / l;
+      c += dt <= T ? a * (1 - Math.exp(-l * dt)) : a * (1 - Math.exp(-l * T)) * Math.exp(-l * (dt - T));
+    }
+    return c * R * p.scale;
+  }
+  // Michaelis–Menten one-compartment, RK4 integration (Vmax mg/h, Km in mg/L)
+  function simMM(times, doses, p) {
+    const S = p.S || 1, ord = times.map((t, i) => i).sort((a, b) => times[a] - times[b]);
+    const out = new Array(times.length).fill(0);
+    const ev = new Set();
+    doses.forEach(d => { ev.add(d.t); if (d.route !== 'PO') ev.add(d.t + Math.max(d.tinf || 0, 1e-3)); else ev.add(d.t + (p.lag || 0)); });
+    times.forEach(t => ev.add(t));
+    const bps = [...ev].filter(t => t >= 0).sort((a, b) => a - b);
+    const rateAt = t => { let r = 0; for (const d of doses) if (d.route !== 'PO') { const T = Math.max(d.tinf || 0, 1e-3); if (t >= d.t && t < d.t + T) r += d.amt * S / T; } return r; };
+    const Kmm = p.Km / p.scale; // work in mg/L
+    let C = 0, G = 0, t = 0, oi = 0;
+    const f = (C, G, r) => [(r + p.ka * G) / p.V - p.Vmax * C / (Kmm + C) / p.V, -p.ka * G];
+    const lastT = times.length ? Math.max(...times) : 0;
+    for (const bp of bps) {
+      if (bp > lastT + 1e-9) break;
+      if (bp > t) {
+        const r = rateAt((t + bp) / 2);
+        const n = Math.max(1, Math.ceil((bp - t) / 0.5)), h = (bp - t) / n;
+        for (let i = 0; i < n; i++) {
+          const k1 = f(C, G, r), k2 = f(C + h / 2 * k1[0], G + h / 2 * k1[1], r), k3 = f(C + h / 2 * k2[0], G + h / 2 * k2[1], r), k4 = f(C + h * k3[0], G + h * k3[1], r);
+          C += h / 6 * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]); G += h / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]);
+          if (C < 0) C = 0;
+        }
+        t = bp;
+      }
+      for (const d of doses) if (d.route === 'PO' && Math.abs(d.t + (p.lag || 0) - bp) < 1e-9) G += d.amt * S * p.F;
+      while (oi < ord.length && times[ord[oi]] <= bp + 1e-9) { out[ord[oi]] = C * p.scale; oi++; }
+    }
+    return out;
+  }
+  function predict(times, doses, p) {
+    if (p.kind === 'mm') return simMM(times, doses, p);
+    const ds = disp(p);
+    return times.map(t => { let c = 0; for (const d of doses) if (t > d.t) c += single(t - d.t, d, p, ds); return c; });
+  }
+  // steady-state metrics for D mg every tau h
+  function ss(D, tau, tinf, route, p) {
+    const S = p.S || 1, Fe = route === 'PO' ? p.F : 1;
+    if (p.kind === 'mm') {
+      const R = S * Fe * D / tau;
+      if (R >= p.Vmax) return { auc24: Infinity, cmax: Infinity, cmin: Infinity, cavg: Infinity, nonss: true };
+      const Css = p.Km / p.scale * R / (p.Vmax - R) * p.scale;
+      return { auc24: Css * 24, cmax: Css, cmin: Css, cavg: Css };
+    }
+    const ds = disp(p), K = [], mu = [];
+    let s, d;
+    if (route === 'PO') {
+      s = Math.min(p.lag || 0, tau); d = { amt: D, route: 'PO' };
+      let sum = 0;
+      for (let i = 0; i < ds.lam.length; i++) { const l = ds.lam[i], ka = kaFix(p.ka, l); const k = ds.A[i] * ka / (ka - l) * p.F * S * D * p.scale; K.push(k); mu.push(l); sum += k; }
+      K.push(-sum); mu.push(p.ka);
+    } else {
+      const T = Math.min(Math.max(tinf || 0, 1e-3), tau); s = T; d = { amt: D, tinf: T, route: 'IV' };
+      const R = D * S / T;
+      for (let i = 0; i < ds.lam.length; i++) { const l = ds.lam[i]; K.push(R * ds.A[i] / l * (1 - Math.exp(-l * T)) * p.scale); mu.push(l); }
+    }
+    const css = t => { let c = single(t, d, p, ds); for (let j = 0; j < K.length; j++) c += K[j] * Math.exp(-mu[j] * (t + tau - s)) / (1 - Math.exp(-mu[j] * tau)); return c; };
+    const cmin = css(0);
+    let cmax = css(s);
+    for (let i = 1; i < 48; i++) { const v = css(tau * i / 48); if (v > cmax) cmax = v; }
+    const auc24 = Fe * S * D / p.CL * 24 / tau * p.scale;
+    return { auc24, cmax, cmin, cavg: auc24 / 24 };
+  }
+  function nelderMead(f, x0, step = 0.3, iter = 400) {
+    const n = x0.length;
+    let pts = [x0.slice()];
+    for (let i = 0; i < n; i++) { const p = x0.slice(); p[i] += step; pts.push(p); }
+    let vals = pts.map(f);
+    for (let it = 0; it < iter; it++) {
+      const idx = pts.map((_, i) => i).sort((a, b) => vals[a] - vals[b]);
+      pts = idx.map(i => pts[i]); vals = idx.map(i => vals[i]);
+      let size = 0; for (let i = 1; i <= n; i++) for (let j = 0; j < n; j++) size = Math.max(size, Math.abs(pts[i][j] - pts[0][j]));
+      if (size < 1e-6) break;
+      const c = new Array(n).fill(0);
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) c[j] += pts[i][j] / n;
+      const w = pts[n];
+      const xr = c.map((cj, j) => cj + (cj - w[j])); const fr = f(xr);
+      if (fr < vals[0]) { const xe = c.map((cj, j) => cj + 2 * (cj - w[j])); const fe = f(xe); if (fe < fr) { pts[n] = xe; vals[n] = fe; } else { pts[n] = xr; vals[n] = fr; } }
+      else if (fr < vals[n - 1]) { pts[n] = xr; vals[n] = fr; }
+      else {
+        const xc = fr < vals[n] ? c.map((cj, j) => cj + 0.5 * (xr[j] - cj)) : c.map((cj, j) => cj + 0.5 * (w[j] - cj));
+        const fc = f(xc);
+        if (fc < Math.min(fr, vals[n])) { pts[n] = xc; vals[n] = fc; }
+        else for (let i = 1; i <= n; i++) { pts[i] = pts[i].map((v, j) => pts[0][j] + 0.5 * (v - pts[0][j])); vals[i] = f(pts[i]); }
+      }
+    }
+    let b = 0; for (let i = 1; i <= n; i++) if (vals[i] < vals[b]) b = i;
+    return { x: pts[b], f: vals[b] };
+  }
+  // MAP Bayesian estimate of two log-normal random effects (names in typ.eta)
+  function fit(typ, om, err, doses, obs) {
+    const [n0, n1] = typ.eta;
+    const used = obs.filter(o => o.use);
+    const P = e => ({ ...typ, [n0]: typ[n0] * Math.exp(e[0]), [n1]: typ[n1] * Math.exp(e[1]) });
+    const prior = [[om[0] ** 2, 0], [0, om[1] ** 2]];
+    if (!used.length) return { eta: [0, 0], cov: prior, P, prior: true, n: 0 };
+    const ts = used.map(o => o.t);
+    const ofv = e => {
+      if (Math.abs(e[0]) > 6 || Math.abs(e[1]) > 6) return 1e12;
+      const pr = predict(ts, doses, P(e));
+      let s = e[0] * e[0] / om[0] ** 2 + e[1] * e[1] / om[1] ** 2;
+      for (let i = 0; i < used.length; i++) {
+        const f = pr[i], v = err.add ** 2 + (err.prop * f) ** 2 + 1e-8;
+        s += Math.log(v) + (used[i].c - f) ** 2 / v;
+      }
+      return isFinite(s) ? s : 1e12;
+    };
+    let best = null;
+    for (const s of [[0, 0], [-0.6, 0], [0.6, 0], [0, -0.5], [0, 0.5], [-0.6, -0.4], [0.6, 0.4]]) {
+      const r = nelderMead(ofv, s, 0.3, typ.kind === 'mm' ? 150 : 400);
+      if (!best || r.f < best.f) best = r;
+    }
+    best = nelderMead(ofv, best.x, 0.05, 200);
+    const x = best.x, h = 1e-3, f0 = ofv(x), g = (a, b) => ofv([x[0] + a, x[1] + b]);
+    const H11 = (g(h, 0) - 2 * f0 + g(-h, 0)) / (h * h), H22 = (g(0, h) - 2 * f0 + g(0, -h)) / (h * h);
+    const H12 = (g(h, h) - g(h, -h) - g(-h, h) + g(-h, -h)) / (4 * h * h);
+    const F11 = H11 / 2, F22 = H22 / 2, F12 = H12 / 2, det = F11 * F22 - F12 * F12;
+    let cov = prior;
+    if (det > 0 && F11 > 0) cov = [[F22 / det, -F12 / det], [-F12 / det, F11 / det]];
+    return { eta: x, cov, P, prior: false, n: used.length, ofv: best.f };
+  }
+  function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function sample(eta, cov, n, seed = 7) {
+    const r = rng(seed);
+    const L11 = Math.sqrt(cov[0][0]), L21 = cov[1][0] / L11, L22 = Math.sqrt(Math.max(cov[1][1] - L21 * L21, 1e-12));
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const u1 = Math.max(r(), 1e-12), u2 = r(), m = Math.sqrt(-2 * Math.log(u1));
+      const z1 = m * Math.cos(2 * Math.PI * u2), z2 = m * Math.sin(2 * Math.PI * u2);
+      out.push([eta[0] + L11 * z1, eta[1] + L21 * z1 + L22 * z2]);
+    }
+    return out;
+  }
+  function quantile(sorted, q) { const i = (sorted.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i); return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo); }
+  return { cvToOm, predict, ss, fit, sample, quantile, disp };
+})();
+/*ENGINE-END*/
+
+/* ---------- Drug model library ----------
+   status: 'checked'  = equations compared with the source (or a source quoting it) on 21 Oct 2026
+           'partial'  = structural model checked; some terms (variability, error, covariate factors) taken from secondary sources or assumed
+           'reference'= textbook population values; between-patient variability assumed. Verify before clinical use.
+   Units: CL, Q in L/h; V in L; Vmax in mg/h; Km in the model's concentration unit. Concentrations in mg/L unless cu = 'µg/L'. */
+const W70 = c => c.wt / 70;
+const MODELS = {
+  /* ---------------- Vancomycin ---------------- */
+  vanc_goti: {
+    drug: 'Vancomycin', cls: 'Antimicrobials', pop: 'Adults (hospitalized; with or without hemodialysis)', ageMin: 18, ageMax: 120,
+    struct: 'Two-compartment, IV infusion', status: 'partial', cu: 'mg/L',
+    ref: 'Goti V et al. Ther Drug Monit 2018;40(2):212–221.',
+    verify: 'CL, V1, Q, V2 typical values and covariate forms checked against a secondary source. Hemodialysis factors, variability and residual error entered from the publication as recalled; confirm before use.',
+    formula: 'CL = 4.5 × (CrCL/120)^0.8 × 0.7^HD\nV1 = 58.4 × (WT/70) × 0.5^HD\nQ = 6.5   V2 = 38.4',
+    covs: ['dialysis'],
+    thetas: { CL: { label: 'θCL', value: 4.5, unit: 'L/h' }, eCr: { label: 'CrCL exponent', value: 0.8 }, V1: { label: 'θV1', value: 58.4, unit: 'L' }, Q: { label: 'Q', value: 6.5, unit: 'L/h' }, V2: { label: 'V2', value: 38.4, unit: 'L' }, hdCL: { label: 'HD factor on CL', value: 0.7 }, hdV: { label: 'HD factor on V1', value: 0.5 } },
+    param: (t, c, x) => ({ CL: t.CL * (Math.min(c.crcl, 150) / 120) ** t.eCr * (x.dialysis ? t.hdCL : 1), V1: t.V1 * W70(c) * (x.dialysis ? t.hdV : 1), Q: t.Q, V2: t.V2 }),
+    iiv: { a: 40, b: 60 }, err: { add: 3.4, prop: 0.227 },
+    target: { metric: 'AUC', lo: 400, hi: 600, troughMax: '' },
+    regimen: { intervals: '12, 8, 24, 48', round: 250, maxDose: 3000, infMin: 1, infRate: 1000, route: 'IV' },
+    note: 'AUC24 400–600 mg·h/L assumes MIC 1 mg/L (2020 ASHP/IDSA/PIDS/SIDP consensus).'
+  },
+  vanc_buelga: {
+    drug: 'Vancomycin', cls: 'Antimicrobials', pop: 'Adults (one-compartment alternative)', ageMin: 18, ageMax: 120,
+    struct: 'One-compartment, IV infusion', status: 'reference', cu: 'mg/L',
+    ref: 'Buelga DS et al. Antimicrob Agents Chemother 2005;49(12):4934–41.',
+    verify: 'Entered from the publication as recalled; not re-checked against the full text.',
+    formula: 'CL = 1.08 × CLcr (L/h)\nV = 0.98 × total body weight',
+    thetas: { CLc: { label: 'CL per CLcr', value: 1.08 }, Vkg: { label: 'V per kg', value: 0.98, unit: 'L/kg' } },
+    param: (t, c) => ({ CL: t.CLc * c.crcl * 0.06, V1: t.Vkg * c.wt }),
+    iiv: { a: 28.2, b: 37.2 }, err: { add: 3.52, prop: 0 },
+    target: { metric: 'AUC', lo: 400, hi: 600, troughMax: '' },
+    regimen: { intervals: '12, 8, 24', round: 250, maxDose: 3000, infMin: 1, infRate: 1000, route: 'IV' }
+  },
+  vanc_le: {
+    drug: 'Vancomycin', cls: 'Antimicrobials', pop: 'Children 3 months – 18 years', ageMin: 0.25, ageMax: 18,
+    struct: 'One-compartment, IV infusion (simplified)', status: 'reference', cu: 'mg/L',
+    ref: 'Clearance after Le J et al. Pediatr Infect Dis J 2013;32(4):e155–63.',
+    verify: 'Clearance equation entered as recalled; V fixed at 0.6 L/kg (children 0.63 ± 0.16 L/kg in ASHP tables). Confirm against the publication.',
+    formula: 'CL = 0.248 × WT^0.75 × (0.48/SCr)^0.361 × (ln(age, days)/7.8)^0.995\nV = 0.6 × WT',
+    thetas: { CL0: { label: 'θ1', value: 0.248 }, eWT: { label: 'WT exponent', value: 0.75 }, SCrRef: { label: 'ref SCr', value: 0.48, unit: 'mg/dL' }, eSCr: { label: 'SCr exponent', value: 0.361 }, AgeRef: { label: 'ref ln(age)', value: 7.8 }, eAge: { label: 'age exponent', value: 0.995 }, Vkg: { label: 'V per kg', value: 0.6, unit: 'L/kg' } },
+    param: (t, c) => ({ CL: t.CL0 * c.wt ** t.eWT * (t.SCrRef / c.scr) ** t.eSCr * (Math.log(Math.max(c.ageD, 2)) / t.AgeRef) ** t.eAge, V1: t.Vkg * c.wt }),
+    iiv: { a: 35, b: 25 }, err: { add: 1, prop: 0.15 },
+    target: { metric: 'AUC', lo: 400, hi: 600, troughMax: '' },
+    regimen: { intervals: '6, 8, 12', round: 10, maxDose: 2000, infMin: 1, infRate: 1000, route: 'IV' }
+  },
+  vanc_capparelli: {
+    drug: 'Vancomycin', cls: 'Antimicrobials', pop: 'Neonates and young infants (< 1 year)', ageMin: 0, ageMax: 1,
+    struct: 'One-compartment, IV infusion', status: 'partial', cu: 'mg/L',
+    ref: 'Capparelli EV et al. J Clin Pharmacol 2001;41:927–34 (374 infants); equation as reproduced in ASHP Basic Clinical Pharmacokinetics, Table 1.13.',
+    verify: 'Clearance equation checked against the ASHP reproduction. V 0.69 L/kg from the same tables (infants). Variability assumed.',
+    formula: 'CL = WT × (0.028/SCr + 0.000127 × PNA + 0.0123 × GA28) + 0.006\n  PNA in days (set to 0 if SCr ≥ 0.7); GA28 = 1 if GA > 28 wk\nV = 0.69 × WT',
+    covs: ['ga'],
+    thetas: { a: { label: 'SCr term', value: 0.028 }, b: { label: 'PNA term', value: 0.000127 }, g: { label: 'GA>28 term', value: 0.0123 }, c0: { label: 'intercept', value: 0.006, unit: 'L/h' }, Vkg: { label: 'V per kg', value: 0.69, unit: 'L/kg' } },
+    param: (t, c) => ({ CL: c.wt * (t.a / c.scr + t.b * (c.scr >= 0.7 ? 0 : c.ageD) + t.g * (c.ga > 28 ? 1 : 0)) + t.c0, V1: t.Vkg * c.wt }),
+    iiv: { a: 30, b: 20 }, err: { add: 1, prop: 0.15 },
+    target: { metric: 'AUC', lo: 400, hi: 600, troughMax: '' },
+    regimen: { intervals: '8, 12, 6, 18, 24', round: 5, maxDose: 500, infMin: 1, infRate: 0, route: 'IV' }
+  },
+  vanc_jung: {
+    drug: 'Vancomycin', cls: 'Antimicrobials', pop: 'Neonates (PMA 24–48 weeks)', ageMin: 0, ageMax: 0.25,
+    struct: 'One-compartment, IV infusion', status: 'partial', cu: 'mg/L',
+    ref: 'Jung J et al. Sci Rep 2021;11:6168 (207 neonates, NICU).',
+    verify: 'CL and V equations checked against the publication. Variability and residual error values were not available and are assumed.',
+    formula: 'CL = 2.09 × (WT/70)^0.75 × (PMA/31.7)^0.795 × (CLcr/50.3)^0.741\n  CLcr = 0.45 × length (cm) / SCr\nV = 45.6 × (WT/70)',
+    covs: ['ga'],
+    thetas: { CL: { label: 'θCL', value: 2.09, unit: 'L/h' }, ePMA: { label: 'PMA exponent', value: 0.795 }, eCr: { label: 'CLcr exponent', value: 0.741 }, V: { label: 'θV', value: 45.6, unit: 'L' } },
+    param: (t, c) => ({ CL: t.CL * W70(c) ** 0.75 * (c.pma / 31.7) ** t.ePMA * ((0.45 * c.ht / c.scr) / 50.3) ** t.eCr, V1: t.V * W70(c) }),
+    iiv: { a: 30, b: 20 }, err: { add: 1, prop: 0.15 },
+    target: { metric: 'AUC', lo: 400, hi: 600, troughMax: '' },
+    regimen: { intervals: '8, 12, 18, 24, 6', round: 5, maxDose: 300, infMin: 1, infRate: 0, route: 'IV' }
+  },
+  /* ---------------- Aminoglycosides ---------------- */
+  gent_adult: {
+    drug: 'Gentamicin / tobramycin', cls: 'Antimicrobials', pop: 'Adults, extended interval', ageMin: 18, ageMax: 120,
+    struct: 'One-compartment, IV infusion', status: 'reference', cu: 'mg/L',
+    ref: 'Elimination–CrCL relation: Hull JH, Sarubbi FA. Ann Intern Med 1976;85:183–9. V 0.26 L/kg dosing weight (Bauer, Applied Clinical Pharmacokinetics).',
+    verify: 'Textbook values. Variability and residual error assumed.',
+    formula: 'k = 0.014 + 0.00293 × CrCL (mL/min)\nV = 0.26 × dosing weight\nCL = k × V',
+    thetas: { k0: { label: 'non-renal k', value: 0.014, unit: '1/h' }, ks: { label: 'k per CrCL', value: 0.00293 }, Vkg: { label: 'V per kg', value: 0.26, unit: 'L/kg' } },
+    param: (t, c) => { const V = t.Vkg * c.dw; return { CL: (t.k0 + t.ks * c.crcl) * V, V1: V }; },
+    iiv: { a: 30, b: 25 }, err: { add: 0.2, prop: 0.1 },
+    target: { metric: 'Peak', lo: 16, hi: 24, troughMax: 1 },
+    regimen: { intervals: '24, 36, 48', round: 10, maxDose: 1000, infMin: 0.5, infRate: 0, route: 'IV' },
+    note: 'Peak is the end-of-infusion concentration. Set the peak target from the MIC (Cmax/MIC 8–10).'
+  },
+  amik_adult: {
+    drug: 'Amikacin', cls: 'Antimicrobials', pop: 'Adults, extended interval', ageMin: 18, ageMax: 120,
+    struct: 'One-compartment, IV infusion', status: 'reference', cu: 'mg/L',
+    ref: 'Aminoglycoside elimination–CrCL relation (Hull & Sarubbi 1976); V 0.26 L/kg dosing weight (Bauer, Applied Clinical Pharmacokinetics).',
+    verify: 'Textbook values. Variability and residual error assumed.',
+    formula: 'k = 0.014 + 0.00293 × CrCL (mL/min)\nV = 0.26 × dosing weight\nCL = k × V',
+    thetas: { k0: { label: 'non-renal k', value: 0.014, unit: '1/h' }, ks: { label: 'k per CrCL', value: 0.00293 }, Vkg: { label: 'V per kg', value: 0.26, unit: 'L/kg' } },
+    param: (t, c) => { const V = t.Vkg * c.dw; return { CL: (t.k0 + t.ks * c.crcl) * V, V1: V }; },
+    iiv: { a: 30, b: 25 }, err: { add: 0.5, prop: 0.1 },
+    target: { metric: 'Peak', lo: 50, hi: 64, troughMax: 2.5 },
+    regimen: { intervals: '24, 36, 48', round: 50, maxDose: 3000, infMin: 0.5, infRate: 0, route: 'IV' },
+    note: 'Peak 50–64 mg/L targets Cmax/MIC ≥ 8 for MIC up to 8 mg/L. Adjust to the organism.'
+  },
+  /* ---------------- Immunosuppressants ---------------- */
+  tac_andrews_peds: {
+    drug: 'Tacrolimus', cls: 'Immunosuppressants', pop: 'Children 2–18 y, kidney transplant (twice-daily IR)', ageMin: 2, ageMax: 18,
+    struct: 'Two-compartment, oral first-order absorption with lag', status: 'checked', cu: 'µg/L',
+    ref: 'Andrews LM et al. Clin Pharmacokinet 2018;57(4):475–89.',
+    verify: 'Typical values, covariate model, variability and LC-MS/MS residual error checked against the publication.',
+    formula: 'CL/F = 50.5 × (WT/70)^0.75 × CYP × DON × (eGFR/69)^0.19 × HCT\n  CYP 2.0 if CYP3A5 expresser; DON 0.74 living donor\n  HCT = (Hct/0.30)^−0.44 if Hct < 0.30, else 1\nV1/F = 206 × WT/70   Q/F = 114 × (WT/70)^0.75   V2/F = 1520 × WT/70\nka 0.56 /h, lag 0.37 h',
+    covs: ['cyp3a5', 'donor', 'hct'],
+    thetas: { CL: { label: 'θCL/F', value: 50.5, unit: 'L/h' }, cyp: { label: 'CYP3A5 expresser factor', value: 2.0 }, liv: { label: 'Living donor factor', value: 0.74 }, eGFR: { label: 'eGFR exponent', value: 0.19 }, eHct: { label: 'Hct exponent', value: -0.44 }, V1: { label: 'V1/F', value: 206, unit: 'L' }, Q: { label: 'Q/F', value: 114, unit: 'L/h' }, V2: { label: 'V2/F', value: 1520, unit: 'L' }, ka: { label: 'ka', value: 0.56, unit: '1/h' }, lag: { label: 'lag', value: 0.37, unit: 'h' } },
+    param: (t, c, x) => {
+      const h = c.hct != null && c.hct < 0.3 ? (c.hct / 0.3) ** t.eHct : 1;
+      return { CL: t.CL * W70(c) ** 0.75 * (x.cyp3a5 === 'exp' ? t.cyp : 1) * (x.donor === 'liv' ? t.liv : 1) * (Math.min(c.egfr, 150) / 69) ** t.eGFR * h,
+        V1: t.V1 * W70(c), Q: t.Q * W70(c) ** 0.75, V2: t.V2 * W70(c), ka: t.ka, lag: t.lag, F: 1 };
+    },
+    iiv: { a: 25, b: 69 }, err: { add: 0.28, prop: 0.21 },
+    target: { metric: 'Trough', lo: 7, hi: 12, troughMax: '' },
+    regimen: { intervals: '12', round: 0.25, maxDose: 20, infMin: 0, infRate: 0, route: 'PO' },
+    note: 'Trough targets in the source: 10–15 µg/L in the first 3 weeks, 7–12 µg/L after. CL/F and V/F are apparent oral values.'
+  },
+  tac_er_adult: {
+    drug: 'Tacrolimus', cls: 'Immunosuppressants', pop: 'Adults, kidney transplant (once-daily extended release)', ageMin: 18, ageMax: 120,
+    struct: 'Two-compartment, oral first-order absorption with lag', status: 'checked', cu: 'µg/L',
+    ref: 'Population PK of extended-release tacrolimus in de novo kidney transplant recipients. Front Pharmacol 2024;15:1456565.',
+    verify: 'Typical values, CYP3A5 factor, variability and residual error checked. The exact form of the age effect (> 60 y) was not legible in the source; applied here as a linear decrease.',
+    formula: 'CL/F = (26.5 × CYP − 0.0562 × max(0, age − 60)) × (WT/70)^0.75\n  CYP 0.666 for CYP3A5 non-expressers (and unknown)\nVc/F = 327 × WT/70   Q/F = 51.9 × (WT/70)^0.75   Vp/F = 298\nka 2.0 /h (fixed), lag 0.341 h',
+    covs: ['cyp3a5'],
+    thetas: { CL: { label: 'θCL/F (expresser)', value: 26.5, unit: 'L/h' }, non: { label: 'non-expresser factor', value: 0.666 }, age: { label: 'CL decrease per year > 60', value: 0.0562, unit: 'L/h' }, V1: { label: 'Vc/F', value: 327, unit: 'L' }, Q: { label: 'Q/F', value: 51.9, unit: 'L/h' }, V2: { label: 'Vp/F', value: 298, unit: 'L' }, ka: { label: 'ka', value: 2.0, unit: '1/h' }, lag: { label: 'lag', value: 0.341, unit: 'h' } },
+    param: (t, c, x) => ({ CL: Math.max(t.CL * (x.cyp3a5 === 'exp' ? 1 : t.non) - t.age * Math.max(0, c.ageY - 60), 1) * W70(c) ** 0.75,
+      V1: t.V1 * W70(c), Q: t.Q * W70(c) ** 0.75, V2: t.V2, ka: t.ka, lag: t.lag, F: 1 }),
+    iiv: { a: 32.1, b: 48.2 }, err: { add: 0.3, prop: 0.282 },
+    target: { metric: 'Trough', lo: 5, hi: 10, troughMax: '' },
+    regimen: { intervals: '24', round: 0.5, maxDose: 30, infMin: 0, infRate: 0, route: 'PO' },
+    note: 'The source standardized whole-blood levels to hematocrit 45%. A small additive error (0.3 µg/L) was added for numerical stability.'
+  },
+  bu_mccune: {
+    drug: 'Busulfan (IV)', cls: 'Oncology / conditioning', pop: 'Infants to adults, HCT conditioning', ageMin: 0, ageMax: 120,
+    struct: 'Two-compartment, IV infusion; normal fat mass and PMA maturation', status: 'checked', cu: 'µg/L',
+    ref: 'McCune JS et al. Clin Cancer Res 2014;20(3):754–63.',
+    verify: 'Typical values, fat fractions, maturation, sex effect, variability and residual error checked against the publication. Time-varying CL (−6.8% at 6–36 h, −8.1% after 36 h) is not modeled.',
+    formula: 'NFM = FFM + Ffat × (WT − FFM); Ffat 0.509 (CL, Q), 0.203 (V)\nMF = PMA^2.3 / (45.7^2.3 + PMA^2.3)\nCL = 11.4 × (NFM/62)^0.75 × MF   Q = 135.2 × (NFM/62)^0.75\nV1 = 13.9 × (NFM/59) × 1.07 if female   V2 = 29.9 × (NFM/59) × 1.07 if female',
+    covs: ['ga'],
+    thetas: { CL: { label: 'θCL', value: 11.4, unit: 'L/h' }, V1: { label: 'θV1', value: 13.9, unit: 'L' }, Q: { label: 'θQ', value: 135.2, unit: 'L/h' }, V2: { label: 'θV2', value: 29.9, unit: 'L' }, fCL: { label: 'Ffat CL', value: 0.509 }, fV: { label: 'Ffat V', value: 0.203 }, TM50: { label: 'TM50', value: 45.7, unit: 'wk' }, hill: { label: 'Hill', value: 2.3 }, fem: { label: 'female V factor', value: 1.07 } },
+    param: (t, c) => {
+      const nc = c.ffm + t.fCL * (c.wt - c.ffm), nv = c.ffm + t.fV * (c.wt - c.ffm);
+      const mf = c.pma ** t.hill / (t.TM50 ** t.hill + c.pma ** t.hill), sx = c.sex === 'F' ? t.fem : 1;
+      return { CL: t.CL * (nc / 62) ** 0.75 * mf, Q: t.Q * (nc / 62) ** 0.75, V1: t.V1 * nv / 59 * sx, V2: t.V2 * nv / 59 * sx };
+    },
+    iiv: { a: 21.5, b: 41 }, err: { add: 26.2, prop: 0.0387 },
+    target: { metric: 'Cavg', lo: 592, hi: 963, troughMax: '' },
+    regimen: { intervals: '24, 6', round: 1, maxDose: 1000, infMin: 2, infRate: 0, route: 'IV' },
+    note: 'Target Css 770 µg/L (window 592–963) per the source; equals AUC 1125 µM·min per q6h dose. Use your protocol target (e.g., cumulative AUC) if different.'
+  },
+  /* ---------------- Antiepileptics ---------------- */
+  pht_adult: {
+    drug: 'Phenytoin', cls: 'Antiepileptics', pop: 'Adults', ageMin: 16, ageMax: 120, kind: 'mm',
+    struct: 'One-compartment, Michaelis–Menten elimination', status: 'reference', cu: 'mg/L',
+    ref: 'Population values from Bauer LA, Applied Clinical Pharmacokinetics (Vmax 7 mg/kg/d, Km 4 mg/L, V 0.7 L/kg).',
+    verify: 'Textbook values. Absorption rate and variability assumed.',
+    formula: 'Vmax = 7 mg/kg/day × WT   Km = 4 mg/L   V = 0.7 L/kg\nS = 0.92 (phenytoin sodium); Css = Km × R / (Vmax − R)',
+    covs: ['albumin'],
+    thetas: { Vmax: { label: 'Vmax', value: 7, unit: 'mg/kg/day' }, Km: { label: 'Km', value: 4, unit: 'mg/L' }, Vkg: { label: 'V', value: 0.7, unit: 'L/kg' }, S: { label: 'salt factor S', value: 0.92 }, ka: { label: 'ka (oral)', value: 0.5, unit: '1/h' }, F: { label: 'F (oral)', value: 1 } },
+    param: (t, c) => ({ Vmax: t.Vmax * c.wt / 24, Km: t.Km, V: t.Vkg * c.wt, S: t.S, ka: t.ka, F: t.F }),
+    iiv: { a: 30, b: 60 }, err: { add: 1, prop: 0.1 },
+    target: { metric: 'Trough', lo: 10, hi: 20, troughMax: '' }, albAdj: true,
+    regimen: { intervals: '12, 24, 8', round: 25, maxDose: 800, infMin: 0.5, infRate: 3000, route: 'PO' },
+    note: 'Target 10–20 mg/L total at normal albumin. With albumin below 3.5 g/dL the total-concentration target is lowered by the Sheiner–Tozer factor (0.2 × albumin + 0.1; 0.1 × albumin + 0.1 if CrCL < 10). Measure free phenytoin when possible.'
+  },
+  pht_peds: {
+    drug: 'Phenytoin', cls: 'Antiepileptics', pop: 'Children 6 months – 16 years', ageMin: 0.5, ageMax: 16, kind: 'mm',
+    struct: 'One-compartment, Michaelis–Menten elimination', status: 'reference', cu: 'mg/L',
+    ref: 'Population values from Bauer LA, Applied Clinical Pharmacokinetics (children: Vmax 12 mg/kg/d ≤ 6 y, 9 mg/kg/d 7–16 y; Km 6 mg/L).',
+    verify: 'Textbook values. Absorption rate and variability assumed.',
+    formula: 'Vmax = 12 (≤ 6 y) or 9 (7–16 y) mg/kg/day × WT   Km = 6 mg/L   V = 0.7 L/kg',
+    covs: ['albumin'],
+    thetas: { VmaxY: { label: 'Vmax ≤ 6 y', value: 12, unit: 'mg/kg/day' }, VmaxO: { label: 'Vmax 7–16 y', value: 9, unit: 'mg/kg/day' }, Km: { label: 'Km', value: 6, unit: 'mg/L' }, Vkg: { label: 'V', value: 0.7, unit: 'L/kg' }, S: { label: 'salt factor S', value: 1 }, ka: { label: 'ka (oral)', value: 0.5, unit: '1/h' }, F: { label: 'F (oral)', value: 1 } },
+    param: (t, c) => ({ Vmax: (c.ageY <= 6 ? t.VmaxY : t.VmaxO) * c.wt / 24, Km: t.Km, V: t.Vkg * c.wt, S: t.S, ka: t.ka, F: t.F }),
+    iiv: { a: 30, b: 60 }, err: { add: 1, prop: 0.1 },
+    target: { metric: 'Trough', lo: 10, hi: 20, troughMax: '' }, albAdj: true,
+    regimen: { intervals: '12, 24, 8', round: 5, maxDose: 400, infMin: 0.5, infRate: 0, route: 'PO' },
+    note: 'S = 1 for suspension and chewable (acid) forms; 0.92 for phenytoin sodium capsules or IV.'
+  },
+  pb_neo: {
+    drug: 'Phenobarbital', cls: 'Antiepileptics', pop: 'Neonates', ageMin: 0, ageMax: 0.17,
+    struct: 'One-compartment, IV or oral', status: 'reference', cu: 'mg/L',
+    ref: 'Textbook population values (Bauer, Applied Clinical Pharmacokinetics): neonatal V ≈ 0.9 L/kg, t½ ≈ 115 h.',
+    verify: 'Textbook values. Variability assumed.',
+    formula: 'CL = 0.0054 × WT (L/h)   V = 0.9 × WT',
+    thetas: { CLkg: { label: 'CL per kg', value: 0.0054, unit: 'L/h/kg' }, Vkg: { label: 'V per kg', value: 0.9, unit: 'L/kg' }, ka: { label: 'ka (oral)', value: 1, unit: '1/h' }, F: { label: 'F (oral)', value: 1 } },
+    param: (t, c) => ({ CL: t.CLkg * c.wt, V1: t.Vkg * c.wt, ka: t.ka, F: t.F }),
+    iiv: { a: 35, b: 20 }, err: { add: 1, prop: 0.1 },
+    target: { metric: 'Trough', lo: 15, hi: 40, troughMax: '' },
+    regimen: { intervals: '12, 24', round: 1, maxDose: 100, infMin: 0.25, infRate: 0, route: 'IV' }
+  },
+  pb_peds: {
+    drug: 'Phenobarbital', cls: 'Antiepileptics', pop: 'Children', ageMin: 0.17, ageMax: 18,
+    struct: 'One-compartment, IV or oral', status: 'reference', cu: 'mg/L',
+    ref: 'Textbook population values (Bauer, Applied Clinical Pharmacokinetics): CL 8 mL/h/kg, V 0.7 L/kg.',
+    verify: 'Textbook values. Variability assumed.',
+    formula: 'CL = 0.008 × WT (L/h)   V = 0.7 × WT',
+    thetas: { CLkg: { label: 'CL per kg', value: 0.008, unit: 'L/h/kg' }, Vkg: { label: 'V per kg', value: 0.7, unit: 'L/kg' }, ka: { label: 'ka (oral)', value: 1, unit: '1/h' }, F: { label: 'F (oral)', value: 1 } },
+    param: (t, c) => ({ CL: t.CLkg * c.wt, V1: t.Vkg * c.wt, ka: t.ka, F: t.F }),
+    iiv: { a: 35, b: 20 }, err: { add: 1, prop: 0.1 },
+    target: { metric: 'Trough', lo: 15, hi: 40, troughMax: '' },
+    regimen: { intervals: '12, 24', round: 5, maxDose: 300, infMin: 0.25, infRate: 0, route: 'PO' }
+  },
+  pb_adult: {
+    drug: 'Phenobarbital', cls: 'Antiepileptics', pop: 'Adults', ageMin: 18, ageMax: 120,
+    struct: 'One-compartment, IV or oral', status: 'reference', cu: 'mg/L',
+    ref: 'Textbook population values (Bauer, Applied Clinical Pharmacokinetics): CL 4 mL/h/kg, V 0.7 L/kg.',
+    verify: 'Textbook values. Variability assumed.',
+    formula: 'CL = 0.004 × WT (L/h)   V = 0.7 × WT',
+    thetas: { CLkg: { label: 'CL per kg', value: 0.004, unit: 'L/h/kg' }, Vkg: { label: 'V per kg', value: 0.7, unit: 'L/kg' }, ka: { label: 'ka (oral)', value: 1, unit: '1/h' }, F: { label: 'F (oral)', value: 1 } },
+    param: (t, c) => ({ CL: t.CLkg * c.wt, V1: t.Vkg * c.wt, ka: t.ka, F: t.F }),
+    iiv: { a: 35, b: 20 }, err: { add: 1, prop: 0.1 },
+    target: { metric: 'Trough', lo: 15, hi: 40, troughMax: '' },
+    regimen: { intervals: '12, 24', round: 15, maxDose: 400, infMin: 0.25, infRate: 0, route: 'PO' }
+  },
+  vpa_adult: {
+    drug: 'Valproic acid', cls: 'Antiepileptics', pop: 'Adults', ageMin: 18, ageMax: 120,
+    struct: 'One-compartment, IV or oral', status: 'reference', cu: 'mg/L',
+    ref: 'Textbook population values (Bauer, Applied Clinical Pharmacokinetics): CL 7–12 mL/h/kg monotherapy, 15–18 with enzyme inducers; V 0.15 L/kg.',
+    verify: 'Textbook values. Valproate protein binding is concentration-dependent; total-level predictions above ~100 mg/L are less reliable.',
+    formula: 'CL = 0.008 × WT (× 1.9 with enzyme inducers)   V = 0.15 × WT',
+    covs: ['inducer'],
+    thetas: { CLkg: { label: 'CL per kg', value: 0.008, unit: 'L/h/kg' }, ind: { label: 'inducer factor', value: 1.9 }, Vkg: { label: 'V per kg', value: 0.15, unit: 'L/kg' }, ka: { label: 'ka (oral)', value: 0.5, unit: '1/h' }, F: { label: 'F (oral)', value: 1 } },
+    param: (t, c, x) => ({ CL: t.CLkg * c.wt * (x.inducer ? t.ind : 1), V1: t.Vkg * c.wt, ka: t.ka, F: t.F }),
+    iiv: { a: 30, b: 20 }, err: { add: 3, prop: 0.1 },
+    target: { metric: 'Trough', lo: 50, hi: 100, troughMax: '' },
+    regimen: { intervals: '12, 8, 24', round: 125, maxDose: 3000, infMin: 1, infRate: 0, route: 'PO' }
+  },
+  vpa_peds: {
+    drug: 'Valproic acid', cls: 'Antiepileptics', pop: 'Children', ageMin: 0.5, ageMax: 18,
+    struct: 'One-compartment, IV or oral', status: 'reference', cu: 'mg/L',
+    ref: 'Textbook population values (Bauer, Applied Clinical Pharmacokinetics): children CL 10–20 mL/h/kg monotherapy, 20–30 with inducers; V 0.2 L/kg.',
+    verify: 'Textbook values. Variability assumed.',
+    formula: 'CL = 0.013 × WT (× 1.9 with enzyme inducers)   V = 0.2 × WT',
+    covs: ['inducer'],
+    thetas: { CLkg: { label: 'CL per kg', value: 0.013, unit: 'L/h/kg' }, ind: { label: 'inducer factor', value: 1.9 }, Vkg: { label: 'V per kg', value: 0.2, unit: 'L/kg' }, ka: { label: 'ka (oral)', value: 0.5, unit: '1/h' }, F: { label: 'F (oral)', value: 1 } },
+    param: (t, c, x) => ({ CL: t.CLkg * c.wt * (x.inducer ? t.ind : 1), V1: t.Vkg * c.wt, ka: t.ka, F: t.F }),
+    iiv: { a: 30, b: 20 }, err: { add: 3, prop: 0.1 },
+    target: { metric: 'Trough', lo: 50, hi: 100, troughMax: '' },
+    regimen: { intervals: '12, 8', round: 25, maxDose: 1500, infMin: 1, infRate: 0, route: 'PO' }
+  },
+  cbz_adult: {
+    drug: 'Carbamazepine', cls: 'Antiepileptics', pop: 'Adults (after autoinduction)', ageMin: 18, ageMax: 120,
+    struct: 'One-compartment, oral', status: 'reference', cu: 'mg/L',
+    ref: 'Textbook population values (Bauer, Applied Clinical Pharmacokinetics): CL 64 mL/h/kg monotherapy, 100 mL/h/kg with inducers; V 1.4 L/kg.',
+    verify: 'Textbook values. Autoinduction completes over 2–4 weeks; earlier levels will look higher than predicted.',
+    formula: 'CL = 0.064 × WT (0.1 × WT with inducers)   V = 1.4 × WT   F 0.85',
+    covs: ['inducer'],
+    thetas: { CLkg: { label: 'CL per kg', value: 0.064, unit: 'L/h/kg' }, CLind: { label: 'CL per kg with inducers', value: 0.1, unit: 'L/h/kg' }, Vkg: { label: 'V per kg', value: 1.4, unit: 'L/kg' }, ka: { label: 'ka', value: 0.3, unit: '1/h' }, F: { label: 'F', value: 0.85 } },
+    param: (t, c, x) => ({ CL: (x.inducer ? t.CLind : t.CLkg) * c.wt, V1: t.Vkg * c.wt, ka: t.ka, F: t.F }),
+    iiv: { a: 30, b: 20 }, err: { add: 0.5, prop: 0.1 },
+    target: { metric: 'Trough', lo: 4, hi: 12, troughMax: '' },
+    regimen: { intervals: '12, 8', round: 100, maxDose: 1600, infMin: 0, infRate: 0, route: 'PO' }, routes: ['PO']
+  },
+  cbz_peds: {
+    drug: 'Carbamazepine', cls: 'Antiepileptics', pop: 'Children (after autoinduction)', ageMin: 1, ageMax: 18,
+    struct: 'One-compartment, oral', status: 'reference', cu: 'mg/L',
+    ref: 'Textbook population values (Bauer, Applied Clinical Pharmacokinetics): children CL 110 mL/h/kg; V 1.4 L/kg.',
+    verify: 'Textbook values. Variability assumed.',
+    formula: 'CL = 0.11 × WT   V = 1.4 × WT   F 0.85',
+    thetas: { CLkg: { label: 'CL per kg', value: 0.11, unit: 'L/h/kg' }, Vkg: { label: 'V per kg', value: 1.4, unit: 'L/kg' }, ka: { label: 'ka', value: 0.3, unit: '1/h' }, F: { label: 'F', value: 0.85 } },
+    param: (t, c) => ({ CL: t.CLkg * c.wt, V1: t.Vkg * c.wt, ka: t.ka, F: t.F }),
+    iiv: { a: 30, b: 20 }, err: { add: 0.5, prop: 0.1 },
+    target: { metric: 'Trough', lo: 4, hi: 12, troughMax: '' },
+    regimen: { intervals: '12, 8', round: 50, maxDose: 1000, infMin: 0, infRate: 0, route: 'PO' }, routes: ['PO']
+  },
+  /* ---------------- Cardiovascular / respiratory ---------------- */
+  dig_adult: {
+    drug: 'Digoxin', cls: 'Cardiovascular', pop: 'Adults', ageMin: 18, ageMax: 120,
+    struct: 'One-compartment, IV or oral', status: 'reference', cu: 'µg/L',
+    ref: 'Jusko–Koup equations as given in Bauer, Applied Clinical Pharmacokinetics.',
+    verify: 'Textbook equations. Variability assumed. One-compartment: use levels drawn at least 6 h after a dose (12 h preferred).',
+    formula: 'CL (mL/min) = 1.303 × CrCL + CLnr (40; 20 with heart failure)\nV (L) = (226 + 298 × CrCL / (29.1 + CrCL)) × WT/70\nF tablets 0.7',
+    covs: ['chf'], distMinH: 6,
+    thetas: { a: { label: 'renal slope', value: 1.303 }, nr: { label: 'CLnr', value: 40, unit: 'mL/min' }, nrHF: { label: 'CLnr with HF', value: 20, unit: 'mL/min' }, V0: { label: 'V intercept', value: 226, unit: 'L' }, V1c: { label: 'V renal term', value: 298, unit: 'L' }, ka: { label: 'ka (oral)', value: 1, unit: '1/h' }, F: { label: 'F (oral)', value: 0.7 } },
+    param: (t, c, x) => ({ CL: (t.a * c.crcl + (x.chf ? t.nrHF : t.nr)) * 0.06, V1: (t.V0 + t.V1c * c.crcl / (29.1 + c.crcl)) * W70(c), ka: t.ka, F: t.F }),
+    iiv: { a: 40, b: 30 }, err: { add: 0.1, prop: 0.1 },
+    target: { metric: 'Trough', lo: 0.5, hi: 0.9, troughMax: '' },
+    regimen: { intervals: '24', round: 0.0625, maxDose: 0.5, infMin: 0.1, infRate: 0, route: 'PO' },
+    note: 'Target 0.5–0.9 µg/L for heart failure; 0.8–2.0 µg/L is sometimes used for rate control in atrial fibrillation.'
+  },
+  theo_adult: {
+    drug: 'Theophylline', cls: 'Cardiovascular / respiratory', pop: 'Adults', ageMin: 16, ageMax: 120,
+    struct: 'One-compartment, IV or oral', status: 'reference', cu: 'mg/L',
+    ref: 'Textbook population values (Bauer, Applied Clinical Pharmacokinetics): CL 0.04 L/h/kg non-smokers, 0.064 smokers, 0.024 heart failure; V 0.5 L/kg.',
+    verify: 'Textbook values. Variability assumed. Use S = 0.8 for aminophylline.',
+    formula: 'CL = 0.04 × WT (× 1.6 smoker; × 0.6 heart failure)   V = 0.5 × WT',
+    covs: ['smoker', 'chf'],
+    thetas: { CLkg: { label: 'CL per kg', value: 0.04, unit: 'L/h/kg' }, smk: { label: 'smoker factor', value: 1.6 }, hf: { label: 'heart failure factor', value: 0.6 }, Vkg: { label: 'V per kg', value: 0.5, unit: 'L/kg' }, S: { label: 'salt factor S', value: 1 }, ka: { label: 'ka (oral)', value: 0.5, unit: '1/h' }, F: { label: 'F (oral)', value: 1 } },
+    param: (t, c, x) => ({ CL: t.CLkg * c.wt * (x.smoker ? t.smk : 1) * (x.chf ? t.hf : 1), V1: t.Vkg * c.wt, S: t.S, ka: t.ka, F: t.F }),
+    iiv: { a: 35, b: 20 }, err: { add: 0.5, prop: 0.1 },
+    target: { metric: 'Trough', lo: 5, hi: 15, troughMax: '' },
+    regimen: { intervals: '12, 8, 24', round: 50, maxDose: 1200, infMin: 0.5, infRate: 0, route: 'PO' }
+  },
+  theo_peds: {
+    drug: 'Theophylline', cls: 'Cardiovascular / respiratory', pop: 'Children 1–9 years', ageMin: 1, ageMax: 9,
+    struct: 'One-compartment, IV or oral', status: 'reference', cu: 'mg/L',
+    ref: 'Textbook population values (Bauer, Applied Clinical Pharmacokinetics): children 1–9 y CL 0.08 L/h/kg; V 0.5 L/kg.',
+    verify: 'Textbook values. Variability assumed.',
+    formula: 'CL = 0.08 × WT   V = 0.5 × WT',
+    thetas: { CLkg: { label: 'CL per kg', value: 0.08, unit: 'L/h/kg' }, Vkg: { label: 'V per kg', value: 0.5, unit: 'L/kg' }, S: { label: 'salt factor S', value: 1 }, ka: { label: 'ka (oral)', value: 0.5, unit: '1/h' }, F: { label: 'F (oral)', value: 1 } },
+    param: (t, c) => ({ CL: t.CLkg * c.wt, V1: t.Vkg * c.wt, S: t.S, ka: t.ka, F: t.F }),
+    iiv: { a: 35, b: 20 }, err: { add: 0.5, prop: 0.1 },
+    target: { metric: 'Trough', lo: 5, hi: 15, troughMax: '' },
+    regimen: { intervals: '6, 8, 12', round: 10, maxDose: 600, infMin: 0.5, infRate: 0, route: 'PO' }
+  },
+  /* ---------------- Custom ---------------- */
+  custom: {
+    drug: 'Custom drug', cls: 'Custom', pop: 'Any (user-defined)', ageMin: 0, ageMax: 120,
+    struct: 'One- or two-compartment, IV infusion or oral', status: 'custom', cu: 'mg/L',
+    ref: 'User-defined. Enter typical values and covariate exponents from your source model.',
+    verify: 'Your responsibility to verify.',
+    formula: 'CL = θCL × (WT/70)^θ1 × (RF/100)^θ2   V1 = θV × (WT/70)^θ3\nQ, V2 optional (0 = one-compartment)\nRF = CrCL (adults) or Schwartz eGFR (< 18 y)',
+    thetas: { CL: { label: 'θCL', value: 5, unit: 'L/h' }, eCLwt: { label: 'WT on CL', value: 0.75 }, eCLrf: { label: 'RF on CL', value: 0 }, V: { label: 'θV', value: 50, unit: 'L' }, eVwt: { label: 'WT on V', value: 1 }, Q: { label: 'Q', value: 0, unit: 'L/h' }, V2: { label: 'V2', value: 0, unit: 'L' }, ka: { label: 'ka (oral)', value: 1, unit: '1/h' }, F: { label: 'F (oral)', value: 1 }, lag: { label: 'lag (oral)', value: 0, unit: 'h' } },
+    param: (t, c) => ({ CL: t.CL * W70(c) ** t.eCLwt * (c.rf / 100) ** t.eCLrf, V1: t.V * W70(c) ** t.eVwt, Q: t.Q * W70(c) ** 0.75, V2: t.V2 * W70(c), ka: t.ka, F: t.F, lag: t.lag }),
+    iiv: { a: 30, b: 30 }, err: { add: 0.5, prop: 0.15 },
+    target: { metric: 'Trough', lo: 10, hi: 15, troughMax: '' },
+    regimen: { intervals: '8, 12, 24', round: 50, maxDose: 2000, infMin: 1, infRate: 0, route: 'IV' }
+  }
+};
+// defaults
+for (const k in MODELS) {
+  const m = MODELS[k]; m.id = k; m.kind = m.kind || 'linear';
+  if (!m.routes) { const p = m.param(Object.fromEntries(Object.entries(m.thetas).map(([a, b]) => [a, b.value])), { wt: 70, crcl: 100, egfr: 100, rf: 100, scr: 1, ageD: 3650, ageY: 30, pma: 600, ga: 40, ht: 170, ffm: 55, sex: 'M', hct: null }, {}); m.routes = p.ka ? (k.startsWith('tac') ? ['PO'] : ['IV', 'PO']) : ['IV']; }
+  m.etaNames = m.kind === 'mm' ? ['Vmax', 'Km'] : ['CL', 'V1'];
+  m.covs = m.covs || [];
+}
+const XCOV = {
+  ga: { label: 'Gestational age at birth (wk)', type: 'num', def: 40 },
+  albumin: { label: 'Serum albumin (g/dL)', type: 'num', def: '' },
+  hct: { label: 'Hematocrit (%)', type: 'num', def: '' },
+  cyp3a5: { label: 'CYP3A5 genotype', type: 'sel', opts: [['unk', 'Unknown'], ['non', '*3/*3 (non-expresser)'], ['exp', '*1 carrier (expresser)']], def: 'unk' },
+  donor: { label: 'Donor type', type: 'sel', opts: [['dec', 'Deceased'], ['liv', 'Living']], def: 'dec' },
+  dialysis: { label: 'On intermittent hemodialysis', type: 'chk' },
+  smoker: { label: 'Current smoker', type: 'chk' },
+  chf: { label: 'Heart failure', type: 'chk' },
+  inducer: { label: 'Taking an enzyme inducer', type: 'chk' }
+};
+
+const METRIC = {
+  AUC: { key: 'auc24', label: 'AUC24', au: true },
+  Trough: { key: 'cmin', label: 'Trough' },
+  Peak: { key: 'cmax', label: 'Peak' },
+  Cavg: { key: 'cavg', label: 'Css avg' }
+};
+const STATUS = {
+  checked: ['good', 'Source-checked'],
+  partial: ['info', 'Partly checked'],
+  reference: ['warn', 'Textbook values · verify'],
+  custom: ['warn', 'User-defined']
+};
+const unitOf = (m, metric) => METRIC[metric].au ? (m.cu === 'mg/L' ? 'mg·h/L' : 'µg·h/L') : m.cu;
+
+/* ---------- State ---------- */
+const KEY = 'mipd-navigator-case-v2';
+const uid = () => Math.random().toString(36).slice(2, 9);
+const pad = n => String(n).padStart(2, '0');
+const toLocal = ms => { const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const parseLocal = s => { if (!s || typeof s !== 'string') return NaN; const [d, t] = s.split('T'); if (!d) return NaN; const [y, mo, da] = d.split('-').map(Number); const [h, mi] = (t || '00:00').split(':').map(Number); return new Date(y, mo - 1, da, h || 0, mi || 0).getTime(); };
+const roundHour = ms => { const d = new Date(ms); d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 1); return d.getTime(); };
+
+function exampleCase() {
+  const base = new Date(); base.setHours(0, 0, 0, 0);
+  const b = base.getTime() - 2 * 864e5, H = 36e5;
+  return {
+    patient: { label: 'Example — bed 4B', age: 64, ageUnit: 'y', sex: 'M', wt: 82, ht: 178, scr: 1.3, wtBasis: 'auto', cap: false },
+    x: {}, modelId: 'vanc_goti', overrides: {},
+    doses: [8, 20, 32, 44, 56].map(h => ({ id: uid(), time: toLocal(b + h * H), amt: 1250, tinf: 1.5, route: 'IV' })),
+    levels: [{ id: uid(), time: toLocal(b + 55.5 * H), c: 21.6, use: true }, { id: uid(), time: toLocal(b + 58.5 * H), c: 35.9, use: true }],
+    sel: null, start: null, isExample: true
+  };
+}
+function blankCase(modelId) {
+  return { patient: { label: '', age: '', ageUnit: 'y', sex: 'M', wt: '', ht: '', scr: '', wtBasis: 'auto', cap: false },
+    x: {}, modelId: modelId || 'vanc_goti', overrides: {}, doses: [], levels: [], sel: null, start: null, isExample: false };
+}
+let state;
+try { state = window.CINCYDOSE_NO_PERSIST ? null : JSON.parse(localStorage.getItem(KEY)); } catch (e) { state = null; }
+if (!state || !state.patient || !MODELS[state.modelId]) state = exampleCase();
+state.x = state.x || {};
+const save = () => { if (window.CINCYDOSE_NO_PERSIST) return; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+
+function getModel() {
+  const b = MODELS[state.modelId], o = state.overrides[state.modelId] || {};
+  const num = (v, d) => (v === '' || v === undefined || v === null || !isFinite(+v)) ? d : +v;
+  const th = {}; for (const k in b.thetas) th[k] = num(o.thetas?.[k], b.thetas[k].value);
+  const iiv = { a: num(o.iiv?.a, b.iiv.a), b: num(o.iiv?.b, b.iiv.b) };
+  const err = { add: num(o.err?.add, b.err.add), prop: num(o.err?.prop, b.err.prop) };
+  const tg = o.target || {};
+  const target = { metric: tg.metric || b.target.metric, lo: num(tg.lo, b.target.lo), hi: num(tg.hi, b.target.hi),
+    troughMax: ('troughMax' in tg) ? (tg.troughMax === '' ? null : num(tg.troughMax, null)) : (b.target.troughMax === '' ? null : b.target.troughMax) };
+  const rg = o.regimen || {};
+  const regimen = { intervals: (rg.intervals ?? b.regimen.intervals), round: num(rg.round, b.regimen.round), maxDose: num(rg.maxDose, b.regimen.maxDose), infMin: num(rg.infMin, b.regimen.infMin), infRate: num(rg.infRate, b.regimen.infRate), route: b.regimen.route };
+  return { ...b, th, iiv, err, target, regimen };
+}
+const drugs = () => { const out = []; for (const k in MODELS) { const m = MODELS[k]; if (!out.find(d => d.drug === m.drug)) out.push({ drug: m.drug, cls: m.cls }); } return out; };
+const modelsOf = drug => Object.values(MODELS).filter(m => m.drug === drug);
+function suggestFor(drug, ageY) {
+  const ms = modelsOf(drug);
+  if (!(ageY >= 0)) return ms[0];
+  return ms.find(m => ageY >= m.ageMin && ageY < m.ageMax) || ms.find(m => ageY >= m.ageMin && ageY <= m.ageMax) || ms[0];
+}
+
+/* ---------- Covariates ---------- */
+function ageYears(p) { const a = +p.age; return p.ageUnit === 'y' ? a : p.ageUnit === 'm' ? a / 12 : a / 365.25; }
+function covariates(p, x) {
+  const age = +p.age, wt = +p.wt, ht = +p.ht, scr = +p.scr;
+  const missing = [];
+  if (!(age > 0)) missing.push('age'); if (!(wt > 0)) missing.push('weight'); if (!(ht > 0)) missing.push('height'); if (!(scr > 0)) missing.push('serum creatinine');
+  if (missing.length) return { ok: false, missing };
+  const ageY = ageYears(p), ageD = ageY * 365.25, adult = ageY >= 18;
+  const inch = ht / 2.54;
+  const ibw = adult ? (p.sex === 'F' ? 45.5 : 50) + 2.3 * (inch - 60) : null;
+  const adj = ibw ? ibw + 0.4 * (wt - ibw) : null;
+  let basis = p.wtBasis;
+  if (!adult) basis = 'TBW';
+  else if (basis === 'auto') basis = wt < ibw ? 'TBW' : wt > 1.2 * ibw ? 'AdjBW' : 'IBW';
+  const dw = basis === 'IBW' ? ibw : basis === 'AdjBW' ? adj : wt;
+  let crcl = Math.max((140 - ageY) * dw / (72 * scr) * (p.sex === 'F' ? 0.85 : 1), 1);
+  if (p.cap) crcl = Math.min(crcl, 150);
+  const egfr = 0.413 * ht / scr;
+  const bsa = Math.sqrt(ht * wt / 3600);
+  const bmi = wt / (ht / 100) ** 2;
+  const jan = p.sex === 'F' ? 9270 * wt / (8780 + 244 * bmi) : 9270 * wt / (6680 + 216 * bmi);
+  const ffm = adult ? jan : (p.sex === 'F' ? (1.11 + (1 - 1.11) / (1 + (ageY / 7.1) ** -1.1)) : (0.88 + (1 - 0.88) / (1 + (ageY / 13.4) ** -12.7))) * jan;
+  const ga = +x.ga > 0 ? +x.ga : 40;
+  const pma = ga + ageD / 7;
+  const hct = +x.hct > 0 ? +x.hct / 100 : null;
+  const alb = +x.albumin > 0 ? +x.albumin : null;
+  return { ok: true, ageY, ageD, adult, wt, ht, scr, sex: p.sex, ibw, adj, dw, basis, crcl, egfr, bsa, bmi, ffm: Math.min(ffm, wt), ga, pma, hct, alb, rf: adult ? crcl : egfr };
+}
+
+/* ---------- Formatting ---------- */
+const fc = x => !isFinite(x) ? '–' : Math.abs(x) >= 100 ? Math.round(x).toLocaleString() : Math.abs(x) >= 10 ? x.toFixed(1) : Math.abs(x) >= 1 ? x.toFixed(2) : x.toFixed(3).replace(/0$/, '');
+const f0 = x => !isFinite(x) ? '–' : Math.round(x).toLocaleString();
+const f1 = x => !isFinite(x) ? '–' : (Math.round(x * 10) / 10).toString();
+const fd = x => !isFinite(x) ? '–' : x >= 10 ? f0(x) : x >= 1 ? (Math.round(x * 100) / 100).toString() : (Math.round(x * 10000) / 10000).toString();
+const tauLbl = t => `q${f1(t)}h`;
+const clock = ms => { const d = new Date(ms); return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const roundTo = (x, r) => r > 0 ? Math.round(x / r + 1e-9) * r : x;
+const infFor = (D, rg) => { let t = rg.infMin; if (rg.infRate > 0) t = Math.max(t, D / rg.infRate); return Math.max(Math.ceil(t * 4 - 1e-9) / 4, rg.infMin); };
+const routeLbl = r => r === 'PO' ? 'oral' : 'IV';
+
+/* ---------- Rendering: inputs ---------- */
+const $ = s => document.querySelector(s);
+function fieldNum(path, label, val, attrs = '') { return `<label class="f">${label}<input type="number" step="any" inputmode="decimal" data-path="${path}" value="${esc(val)}" ${attrs}></label>`; }
+
+function renderPatient() {
+  const p = state.patient;
+  $('#secPatient').innerHTML = `
+    <div class="step-h"><div class="t"><span class="step-n">01</span><h2>Patient</h2></div></div>
+    <div class="grid3">
+      <label class="f" style="grid-column:1/-1">Patient label (optional)<input type="text" data-path="patient.label" value="${esc(p.label)}" placeholder="Initials, bed or MRN" autocomplete="off"></label>
+      <label class="f">Age<span class="inline"><input type="number" step="any" min="0" inputmode="decimal" data-path="patient.age" value="${esc(p.age)}" aria-label="Age"><select data-path="patient.ageUnit" aria-label="Age unit"><option value="y"${p.ageUnit === 'y' ? ' selected' : ''}>yr</option><option value="m"${p.ageUnit === 'm' ? ' selected' : ''}>mo</option><option value="d"${p.ageUnit === 'd' ? ' selected' : ''}>days</option></select></span></label>
+      <label class="f">Sex<select data-path="patient.sex"><option value="M"${p.sex === 'M' ? ' selected' : ''}>Male</option><option value="F"${p.sex === 'F' ? ' selected' : ''}>Female</option></select></label>
+      ${fieldNum('patient.wt', 'Weight (kg)', p.wt, 'min="0"')}
+      ${fieldNum('patient.ht', 'Height / length (cm)', p.ht, 'min="0"')}
+      ${fieldNum('patient.scr', 'Serum creatinine (mg/dL)', p.scr, 'min="0"')}
+      <label class="f">Weight for CrCL<select data-path="patient.wtBasis">
+        ${[['auto', 'Auto'], ['TBW', 'Total'], ['IBW', 'Ideal'], ['AdjBW', 'Adjusted']].map(([v, l]) => `<option value="${v}"${p.wtBasis === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+    </div>
+    <label class="check" style="margin-top:10px"><input type="checkbox" data-path="patient.cap"${p.cap ? ' checked' : ''}> Cap CrCL at 150 mL/min</label>
+    <div class="derived" id="derived"></div>`;
+}
+function updateDerived(c) {
+  const el = $('#derived'); if (!el) return;
+  if (!c.ok) { el.innerHTML = `<span class="hint">Enter ${c.missing.join(', ')} to calculate renal function.</span>`; return; }
+  const ch = [];
+  if (c.adult) {
+    ch.push(`<span class="chip"><span>CrCL </span>${f0(c.crcl)} mL/min</span>`, `<span class="chip"><span>weight used </span>${c.basis} ${f1(c.dw)} kg</span>`, `<span class="chip"><span>IBW </span>${f1(c.ibw)} kg</span>`);
+  } else {
+    ch.push(`<span class="chip"><span>Schwartz eGFR </span>${f0(c.egfr)} mL/min/1.73m²</span>`);
+    if (c.ageY < 2) ch.push(`<span class="chip"><span>PMA </span>${f1(c.pma)} wk</span>`);
+  }
+  ch.push(`<span class="chip"><span>FFM </span>${f1(c.ffm)} kg</span>`, `<span class="chip"><span>BSA </span>${c.bsa.toFixed(2)} m²</span>`);
+  el.innerHTML = ch.join('');
+}
+
+function badge(st) { const [k, l] = STATUS[st] || STATUS.reference; return `<span class="pill ${k}">${l}</span>`; }
+
+function renderModel() {
+  const m = getModel(), b = MODELS[state.modelId], o = state.overrides[state.modelId] || {};
+  const ov = (grp, k, base) => (o[grp] && o[grp][k] !== undefined) ? o[grp][k] : base;
+  const tm = m.target, ageY = ageYears(state.patient);
+  const groups = {}; drugs().forEach(d => (groups[d.cls] ||= []).push(d.drug));
+  const sugg = suggestFor(b.drug, ageY);
+  const tlabel = `${METRIC[tm.metric].label} ${fd(tm.lo)}–${fd(tm.hi)} ${unitOf(m, tm.metric)}${tm.troughMax != null ? `, trough below ${tm.troughMax} ${m.cu}` : ''}`;
+  $('#secModel').innerHTML = `
+    <div class="step-h"><div class="t"><span class="step-n">02</span><h2>Drug and model</h2></div><button class="link" type="button" id="btnLib">Browse library (${Object.keys(MODELS).length})</button></div>
+    <div class="grid2">
+      <label class="f">Drug<select id="drugSel">
+        ${Object.entries(groups).map(([g, ds]) => `<optgroup label="${esc(g)}">${ds.map(d => `<option${d === b.drug ? ' selected' : ''}>${esc(d)}</option>`).join('')}</optgroup>`).join('')}</select></label>
+      <label class="f">Population model<select data-path="modelId" data-rerender="all">
+        ${modelsOf(b.drug).map(v => `<option value="${v.id}"${v.id === state.modelId ? ' selected' : ''}>${esc(v.pop)}</option>`).join('')}</select></label>
+    </div>
+    ${sugg && sugg.id !== state.modelId && isFinite(ageY) && ageY > 0 ? `<div class="banner" style="margin-top:10px"><span>A model for this patient's age is available: <b style="color:inherit">${esc(sugg.pop)}</b>.</span><button class="link" type="button" id="useSugg">Switch</button></div>` : ''}
+    <div class="model-card">
+      <div class="mc-top">${badge(b.status)}<span class="k">${esc(b.struct)}</span></div>
+      <div><span class="k">Population </span>${esc(b.pop)}</div>
+      <div><span class="k">Target </span>${tlabel}</div>
+      <div><span class="k">Source </span>${esc(b.ref)}</div>
+      <div class="k" style="font-size:12px">${esc(b.verify)}</div>
+    </div>
+    ${b.covs.length ? `<div style="margin-top:12px"><h3>Model covariates</h3><div class="grid2" style="margin-top:8px">${b.covs.map(xcovField).join('')}</div></div>` : ''}
+    <details class="adv" id="advModel"${state._advOpen ? ' open' : ''}>
+      <summary>Target, model parameters and dosing rules</summary>
+      <div class="adv-body">
+        <div>
+          <h3>Target</h3>
+          <div class="grid2" style="margin-top:8px">
+            <label class="f">Target metric<select data-path="ov.target.metric" data-rerender="model">
+              ${Object.keys(METRIC).map(k => `<option value="${k}"${tm.metric === k ? ' selected' : ''}>${METRIC[k].label} (${unitOf(m, k)})</option>`).join('')}</select></label>
+            ${fieldNum('ov.target.troughMax', `Trough must stay below (${m.cu})`, ov('target', 'troughMax', b.target.troughMax), 'placeholder="none" data-rerender="model"')}
+            ${fieldNum('ov.target.lo', 'Target low', ov('target', 'lo', b.target.lo), 'data-rerender="model"')}
+            ${fieldNum('ov.target.hi', 'Target high', ov('target', 'hi', b.target.hi), 'data-rerender="model"')}
+          </div>
+        </div>
+        <div>
+          <h3>Structural model</h3>
+          <div class="formula" style="margin-top:8px;white-space:pre">${esc(b.formula)}</div>
+          <div class="grid2" style="margin-top:10px">
+            ${Object.entries(b.thetas).map(([k, t]) => fieldNum('ov.thetas.' + k, `${esc(t.label)}${t.unit ? ' (' + t.unit + ')' : ''}`, ov('thetas', k, t.value))).join('')}
+          </div>
+        </div>
+        <div>
+          <h3>Variability</h3>
+          <div class="grid2" style="margin-top:8px">
+            ${fieldNum('ov.iiv.a', `Between-patient CV, ${b.etaNames[0]} (%)`, ov('iiv', 'a', b.iiv.a))}
+            ${fieldNum('ov.iiv.b', `Between-patient CV, ${b.etaNames[1]} (%)`, ov('iiv', 'b', b.iiv.b))}
+            ${fieldNum('ov.err.add', `Residual error, additive (${b.cu})`, ov('err', 'add', b.err.add))}
+            ${fieldNum('ov.err.prop', 'Residual error, proportional (fraction)', ov('err', 'prop', b.err.prop))}
+          </div>
+        </div>
+        <div>
+          <h3>Dosing rules</h3>
+          <div class="grid2" style="margin-top:8px">
+            <label class="f">Intervals to consider (h)<input type="text" data-path="ov.regimen.intervals" value="${esc(ov('regimen', 'intervals', b.regimen.intervals))}"></label>
+            ${fieldNum('ov.regimen.round', 'Round doses to (mg)', ov('regimen', 'round', b.regimen.round))}
+            ${fieldNum('ov.regimen.maxDose', 'Maximum single dose (mg)', ov('regimen', 'maxDose', b.regimen.maxDose))}
+            ${fieldNum('ov.regimen.infMin', 'Minimum infusion time (h)', ov('regimen', 'infMin', b.regimen.infMin))}
+            ${fieldNum('ov.regimen.infRate', 'Max infusion rate (mg/h, 0 = none)', ov('regimen', 'infRate', b.regimen.infRate))}
+          </div>
+        </div>
+        ${b.note ? `<p class="hint">${esc(b.note)}</p>` : ''}
+        <div><button class="btn small" type="button" id="btnResetModel">Restore published values</button></div>
+      </div>
+    </details>`;
+  $('#advModel').addEventListener('toggle', e => { state._advOpen = e.target.open; });
+  $('#btnResetModel').addEventListener('click', () => { delete state.overrides[state.modelId]; state.sel = null; renderModel(); renderDoses(); schedule(); });
+  $('#btnLib').addEventListener('click', showLibrary);
+  $('#drugSel').addEventListener('change', e => {
+    const had = state.doses.length + state.levels.length;
+    state.doses = []; state.levels = []; state.start = null; state.isExample = false;
+    switchModel(suggestFor(e.target.value, ageYears(state.patient)).id);
+    if (had) toast('Doses and levels cleared for the new drug');
+  });
+  const us = $('#useSugg'); if (us) us.addEventListener('click', () => switchModel(sugg.id));
+}
+function switchModel(id) {
+  state.modelId = id; state.sel = null;
+  const m = MODELS[id];
+  state.doses.forEach(d => { if (!m.routes.includes(d.route)) d.route = m.regimen.route; });
+  renderModel(); renderDoses(); renderLevels(); schedule();
+}
+function xcovField(k) {
+  const d = XCOV[k], v = state.x[k] ?? d.def;
+  if (d.type === 'chk') return `<label class="check" style="align-self:end;min-height:36px"><input type="checkbox" data-path="x.${k}"${v ? ' checked' : ''}> ${esc(d.label)}</label>`;
+  if (d.type === 'sel') return `<label class="f">${esc(d.label)}<select data-path="x.${k}">${d.opts.map(([a, l]) => `<option value="${a}"${v === a ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>`;
+  return fieldNum('x.' + k, esc(d.label), v, 'min="0"');
+}
+
+function renderDoses() {
+  const m = getModel(), multi = m.routes.length > 1;
+  const ds = state.doses, last = ds[ds.length - 1];
+  $('#secDoses').innerHTML = `
+    <div class="step-h"><div class="t"><span class="step-n">03</span><h2>Doses given</h2></div><span class="hint">${ds.length} dose${ds.length === 1 ? '' : 's'}</span></div>
+    ${ds.length ? `<div class="rows">
+      <div class="row dose head"><span>Start time</span><span class="h-amt">Dose (mg)</span><span class="h-inf">${multi ? 'Route · infusion (h)' : m.routes[0] === 'PO' ? 'Route' : 'Infusion (h)'}</span><span></span></div>
+      ${ds.map(d => { const po = (d.route || m.regimen.route) === 'PO'; return `<div class="row dose">
+        <input class="time" type="datetime-local" data-row="doses" data-id="${d.id}" data-k="time" value="${esc(d.time)}" aria-label="Dose start time">
+        <input type="number" step="any" min="0" inputmode="decimal" data-row="doses" data-id="${d.id}" data-k="amt" value="${esc(d.amt)}" aria-label="Dose in mg" placeholder="mg">
+        <span class="rt">${multi ? `<select data-row="doses" data-id="${d.id}" data-k="route" data-rr="1" aria-label="Route"><option value="IV"${!po ? ' selected' : ''}>IV</option><option value="PO"${po ? ' selected' : ''}>Oral</option></select>` : ''}
+        ${po ? (multi ? '' : `<input type="text" value="Oral" disabled aria-label="Route">`) : `<input type="number" step="any" min="0" inputmode="decimal" data-row="doses" data-id="${d.id}" data-k="tinf" value="${esc(d.tinf)}" aria-label="Infusion hours" placeholder="h">`}</span>
+        <button class="x" type="button" data-del="doses" data-id="${d.id}" aria-label="Remove dose">×</button>
+      </div>`; }).join('')}
+    </div>` : `<p class="empty">No doses yet. With no doses, the tool gives a starting regimen from the patient's covariates alone.</p>`}
+    <div class="add-bar">
+      <button class="btn small" type="button" id="addDose">Add dose</button>
+      <button class="btn small" type="button" id="toggleSeries">Add a repeating series</button>
+    </div>
+    <div class="series" id="series" hidden>
+      <label class="f full">First dose at<input type="datetime-local" id="sStart" value="${toLocal(last ? parseLocal(last.time) + 12 * 36e5 : roundHour(Date.now()))}"></label>
+      <label class="f">Dose (mg)<input type="number" id="sAmt" step="any" inputmode="decimal" value="${last ? esc(last.amt) : ''}"></label>
+      <label class="f">Every (h)<input type="number" id="sTau" step="any" inputmode="decimal" value="${String(m.regimen.intervals).split(/[,\s]+/).filter(Boolean)[0] === '24' ? 24 : 12}"></label>
+      <label class="f">Number of doses<input type="number" id="sN" step="1" min="1" inputmode="numeric" value="4"></label>
+      ${multi ? `<label class="f">Route<select id="sRoute"><option value="IV"${m.regimen.route === 'IV' ? ' selected' : ''}>IV</option><option value="PO"${m.regimen.route === 'PO' ? ' selected' : ''}>Oral</option></select></label>` : ''}
+      ${m.routes.includes('IV') ? `<label class="f">Infusion (h, IV)<input type="number" id="sInf" step="any" inputmode="decimal" value="${last ? esc(last.tinf) : m.regimen.infMin}"></label>` : ''}
+      <div class="full"><button class="btn small primary" type="button" id="addSeries">Add these doses</button></div>
+    </div>`;
+  $('#addDose').addEventListener('click', () => {
+    const ld = state.doses[state.doses.length - 1];
+    let tau = 12; if (state.doses.length > 1) { const a = parseLocal(state.doses[state.doses.length - 2].time), b = parseLocal(ld.time); if (b > a) tau = (b - a) / 36e5; }
+    const t = ld ? parseLocal(ld.time) + tau * 36e5 : roundHour(Date.now());
+    state.doses.push({ id: uid(), time: toLocal(t), amt: ld ? ld.amt : '', tinf: ld ? ld.tinf : m.regimen.infMin, route: ld ? ld.route : m.regimen.route });
+    renderDoses(); schedule();
+  });
+  $('#toggleSeries').addEventListener('click', () => { const s = $('#series'); s.hidden = !s.hidden; });
+  $('#addSeries').addEventListener('click', () => {
+    const t0 = parseLocal($('#sStart').value), amt = +$('#sAmt').value, tau = +$('#sTau').value, n = Math.min(+$('#sN').value || 0, 90);
+    const route = $('#sRoute') ? $('#sRoute').value : m.routes[0];
+    const inf = $('#sInf') ? +$('#sInf').value : 0;
+    if (!isFinite(t0) || !(amt > 0) || !(tau > 0) || !(n > 0)) { toast('Enter a start time, dose, interval and number of doses'); return; }
+    for (let i = 0; i < n; i++) state.doses.push({ id: uid(), time: toLocal(t0 + i * tau * 36e5), amt, tinf: inf, route });
+    sortRows('doses'); renderDoses(); schedule();
+  });
+}
+function renderLevels() {
+  const ls = state.levels, cu = MODELS[state.modelId].cu;
+  $('#secLevels').innerHTML = `
+    <div class="step-h"><div class="t"><span class="step-n">04</span><h2>Measured levels</h2></div><span class="hint">${cu}</span></div>
+    ${ls.length ? `<div class="rows">
+      <div class="row lvl head"><span>Sample time</span><span>Level (${cu})</span><span style="text-align:center">Use</span><span></span></div>
+      ${ls.map(l => `<div class="row lvl">
+        <input type="datetime-local" data-row="levels" data-id="${l.id}" data-k="time" value="${esc(l.time)}" aria-label="Sample time">
+        <input type="number" step="any" min="0" inputmode="decimal" data-row="levels" data-id="${l.id}" data-k="c" value="${esc(l.c)}" aria-label="Level" placeholder="${cu}">
+        <span class="use"><input type="checkbox" data-row="levels" data-id="${l.id}" data-k="use"${l.use ? ' checked' : ''} aria-label="Use this level in the fit"></span>
+        <button class="x" type="button" data-del="levels" data-id="${l.id}" aria-label="Remove level">×</button>
+      </div>`).join('')}
+    </div>` : `<p class="empty">No levels yet. Add one or more measured concentrations to individualize the estimate.</p>`}
+    <div class="add-bar"><button class="btn small" type="button" id="addLevel">Add level</button><span class="hint">Untick “Use” to exclude a doubtful sample.</span></div>`;
+  $('#addLevel').addEventListener('click', () => {
+    const ld = state.doses[state.doses.length - 1];
+    const t = ld ? parseLocal(ld.time) + ((+ld.tinf || 0) + 1) * 36e5 : roundHour(Date.now());
+    state.levels.push({ id: uid(), time: toLocal(t), c: '', use: true });
+    renderLevels(); schedule();
+  });
+}
+function sortRows(k) { state[k].sort((a, b) => (parseLocal(a.time) || 0) - (parseLocal(b.time) || 0)); }
+
+/* ---------- Input binding ---------- */
+function readVal(el) { if (el.type === 'checkbox') return el.checked; if (el.type === 'number') return el.value === '' ? '' : parseFloat(el.value); return el.value; }
+function setPath(path, v) {
+  if (path.startsWith('ov.')) { const [, grp, k] = path.split('.'); const o = state.overrides[state.modelId] ||= {}; (o[grp] ||= {})[k] = v; return; }
+  const parts = path.split('.'); let t = state;
+  for (let i = 0; i < parts.length - 1; i++) t = t[parts[i]] ||= {};
+  t[parts[parts.length - 1]] = v;
+}
+function onInput(e) {
+  const el = e.target;
+  if (el.dataset.path) {
+    setPath(el.dataset.path, readVal(el));
+    if (el.dataset.path.startsWith('patient')) state.isExample = false;
+    if (el.dataset.path === 'modelId') { if (e.type === 'change') switchModel(el.value); return; }
+    if (e.type === 'change' && el.dataset.rerender === 'model') renderModel();
+    if (e.type === 'change' && (el.dataset.path === 'patient.age' || el.dataset.path === 'patient.ageUnit')) renderModel();
+    if (el.dataset.path.startsWith('ov.target') || el.dataset.path.startsWith('ov.regimen')) state.sel = null;
+  } else if (el.dataset.row) {
+    const row = state[el.dataset.row].find(r => r.id === el.dataset.id);
+    if (row) row[el.dataset.k] = readVal(el);
+    if (el.dataset.rr && e.type === 'change') renderDoses();
+  } else return;
+  schedule();
+}
+$('#inputs').addEventListener('input', onInput);
+$('#inputs').addEventListener('change', onInput);
+$('#inputs').addEventListener('focusout', e => {
+  const el = e.target; if (!el.dataset || el.dataset.k !== 'time') return;
+  const k = el.dataset.row, before = state[k].map(r => r.id).join();
+  sortRows(k); if (state[k].map(r => r.id).join() !== before) { k === 'doses' ? renderDoses() : renderLevels(); schedule(); }
+});
+$('#inputs').addEventListener('click', e => {
+  const b = e.target.closest('[data-del]'); if (!b) return;
+  state[b.dataset.del] = state[b.dataset.del].filter(r => r.id !== b.dataset.id);
+  b.dataset.del === 'doses' ? renderDoses() : renderLevels(); schedule();
+});
+
+/* ---------- Compute ---------- */
+let timer = null, last = null;
+function schedule() { clearTimeout(timer); timer = setTimeout(() => { save(); compute(); }, 140); }
+
+function typical(m, c) {
+  const raw = m.param(m.th, c, state.x) || {};
+  const base = { kind: m.kind, scale: m.cu === 'µg/L' ? 1000 : 1, ka: 1, F: 1, lag: 0, S: 1, ...raw, eta: m.etaNames };
+  return base;
+}
+function compute() {
+  const m = getModel();
+  const c = covariates(state.patient, state.x);
+  updateDerived(c);
+  $('#exBanner').hidden = !state.isExample;
+  if (!c.ok) { renderEmpty(`Enter ${c.missing.join(', ')} to see predictions.`); return; }
+  const typ = typical(m, c);
+  const okNum = v => v > 0 && isFinite(v);
+  if (m.kind === 'mm' ? !(okNum(typ.Vmax) && okNum(typ.Km) && okNum(typ.V)) : !(okNum(typ.CL) && okNum(typ.V1))) { renderEmpty('The model gives an invalid clearance or volume for these inputs. Check covariates and model parameters.'); return; }
+  const om = [PK.cvToOm(Math.max(m.iiv.a, 1)), PK.cvToOm(Math.max(m.iiv.b, 1))];
+  const err = { add: Math.max(m.err.add, 0), prop: Math.max(m.err.prop, 0) };
+  if (err.add + err.prop <= 0) err.add = 0.1;
+  // target adjusted for albumin (phenytoin)
+  const T = { ...m.target };
+  let albF = 1;
+  if (m.albAdj && c.alb && c.alb < 3.5) { albF = c.crcl < 10 ? 0.1 * c.alb + 0.1 : 0.2 * c.alb + 0.1; T.lo *= albF; T.hi *= albF; }
+
+  const H = 36e5;
+  const dRaw = state.doses.map(d => ({ ...d, ms: parseLocal(d.time), amt: +d.amt, tinf: +d.tinf || 0, route: m.routes.includes(d.route) ? d.route : m.regimen.route })).filter(d => isFinite(d.ms) && d.amt > 0).sort((a, b) => a.ms - b.ms);
+  const t0 = dRaw.length ? dRaw[0].ms : (parseLocal(state.start) || roundHour(Date.now()));
+  const doses = dRaw.map(d => ({ t: (d.ms - t0) / H, amt: d.amt, tinf: d.route === 'PO' ? 0 : d.tinf, route: d.route }));
+  const alerts = [];
+  const lv = state.levels.map(l => ({ ...l, ms: parseLocal(l.time), c: l.c === '' ? NaN : +l.c })).filter(l => isFinite(l.ms) && isFinite(l.c));
+  const obs = lv.map(l => ({ t: (l.ms - t0) / H, c: l.c, use: !!l.use && l.ms > t0 && dRaw.length > 0, ms: l.ms, raw: l }));
+  obs.forEach(o => {
+    if (o.raw.use && (!dRaw.length || o.ms <= t0)) alerts.push(['bad', `Level at ${clock(o.ms)} is before the first recorded dose and was not used.`]);
+    if (!o.use) return;
+    if (doses.find(d => d.route !== 'PO' && o.t > d.t && o.t < d.t + d.tinf)) alerts.push(['warn', `Level at ${clock(o.ms)} was drawn during an infusion. Confirm the sample time.`]);
+    if (m.distMinH) { const prev = doses.filter(d => d.t < o.t).pop(); if (prev && o.t - prev.t < m.distMinH) alerts.push(['warn', `Level at ${clock(o.ms)} was drawn ${f1(o.t - prev.t)} h after a dose, inside the distribution phase. Use levels drawn at least ${m.distMinH} h after the dose.`]); }
+  });
+
+  const F = PK.fit(typ, om, err, doses, obs);
+  const pInd = F.P(F.eta);
+  const samples = PK.sample(F.eta, F.cov, m.kind === 'mm' ? 300 : 400).map(e => F.P(e));
+
+  let cur = null;
+  if (dRaw.length) {
+    const ld = dRaw[dRaw.length - 1];
+    let tau = 12;
+    if (dRaw.length > 1) tau = Math.round((ld.ms - dRaw[dRaw.length - 2].ms) / H * 2) / 2 || 12;
+    cur = { dose: ld.amt, tau, tinf: ld.route === 'PO' ? 0 : ld.tinf, route: ld.route, lastMs: ld.ms };
+  }
+
+  const mk = METRIC[T.metric].key, mid = (T.lo + T.hi) / 2, rg = m.regimen;
+  const route = state.sel?.route && m.routes.includes(state.sel.route) ? state.sel.route : (cur && m.routes.includes(cur.route) ? cur.route : rg.route);
+  const inRange = x => x[mk] >= T.lo && x[mk] <= T.hi && (T.troughMax == null || x.cmin < T.troughMax);
+  const evalReg = (D, tau, tinf, rt) => {
+    const ss = PK.ss(D, tau, tinf, rt, pInd);
+    let hit = 0; for (const s of samples) if (inRange(PK.ss(D, tau, tinf, rt, s))) hit++;
+    return { dose: D, tau, tinf, route: rt, ss, pta: hit / samples.length, ok: inRange(ss) };
+  };
+  const ints = String(rg.intervals).split(/[,;\s]+/).map(Number).filter(x => x > 0 && x <= 168);
+  const cands = [], seen = new Set();
+  const tinfOf = (D, tau) => route === 'PO' ? 0 : Math.min(infFor(D, rg), tau);
+  for (const tau of ints) {
+    let D;
+    if (m.kind === 'mm') {
+      const C = mid / pInd.scale, Km = pInd.Km / pInd.scale;
+      const R = pInd.Vmax * C / (Km + C); D = R * tau / ((pInd.S || 1) * (route === 'PO' ? pInd.F : 1));
+    } else {
+      let tinf = tinfOf(1000, tau);
+      for (let i = 0; i < 3; i++) { const unit = PK.ss(1, tau, tinf, route, pInd)[mk]; D = mid / unit; tinf = tinfOf(roundTo(D, rg.round), tau); }
+    }
+    if (!isFinite(D) || D <= 0) continue;
+    const step = rg.round > 0 ? rg.round : Math.max(D * 0.1, 1e-3);
+    const base = rg.round > 0 ? Math.max(roundTo(D, rg.round), rg.round) : D;
+    for (const d0 of [base - step, base, base + step]) {
+      const d = +d0.toFixed(6);
+      if (!(d > 0) || d > rg.maxDose + 1e-9) continue;
+      const key = d + '|' + tau; if (seen.has(key)) continue; seen.add(key);
+      cands.push(evalReg(d, tau, tinfOf(d, tau), route));
+    }
+    if (D > rg.maxDose && !seen.has(rg.maxDose + '|' + tau)) { seen.add(rg.maxDose + '|' + tau); cands.push({ ...evalReg(rg.maxDose, tau, tinfOf(rg.maxDose, tau), route), capped: true }); }
+  }
+  // rank: feasible first, then chance of target with a small preference for intervals listed earlier in the dosing rules
+  const pref = tau => 0.04 * Math.max(ints.indexOf(tau), 0);
+  cands.forEach(o => { o.score = o.pta - pref(o.tau); });
+  cands.sort((a, b) => (b.ok - a.ok) || (b.score - a.score) || (Math.abs(a.ss[mk] - mid) - Math.abs(b.ss[mk] - mid)));
+  const top = cands.slice(0, 5), best = top[0] || null;
+  const curEval = cur ? evalReg(cur.dose, cur.tau, Math.min(cur.tinf, cur.tau), cur.route) : null;
+
+  const sel = state.sel && state.sel.dose > 0 ? { ...state.sel, route } : (best ? { dose: best.dose, tau: best.tau, tinf: best.tinf, route } : null);
+  const autoStart = cur ? cur.lastMs + cur.tau * H : t0;
+  const startMs = parseLocal(state.start) || autoStart;
+  const plan = sel && sel.dose > 0 && sel.tau > 0 ? evalReg(+sel.dose, +sel.tau, route === 'PO' ? 0 : Math.min(+sel.tinf || 0, +sel.tau), route) : null;
+
+  const e0 = (Math.exp(F.eta[0]) - 1) * 100;
+  if (F.prior) alerts.unshift(['info', 'No usable levels yet. Predictions are a priori, from covariates and the population model only. Draw a level to individualize.']);
+  if (!F.prior && Math.abs(F.eta[0]) > 2 * om[0]) alerts.push(['warn', `Estimated ${m.etaNames[0]} is ${f0(Math.abs(e0))}% ${e0 > 0 ? 'above' : 'below'} the population value for this patient. Check dose and sample times, adherence, and whether organ function is changing.`]);
+  const prObs = obs.filter(o => o.use);
+  const prVals = PK.predict(prObs.map(o => o.t), doses, pInd);
+  prObs.forEach((o, i) => { const pr = prVals[i], sd = Math.sqrt(err.add ** 2 + (err.prop * pr) ** 2); if (Math.abs(o.c - pr) / sd > 3) alerts.push(['warn', `Level at ${clock(o.ms)} (${fc(o.c)} ${m.cu}) fits poorly (predicted ${fc(pr)}). It may be mistimed or mislabeled.`]); });
+  if (c.ageY < m.ageMin || c.ageY > m.ageMax) alerts.push(['bad', `Patient age is outside this model's population (${m.pop}). Choose a model for this age group.`]);
+  if (c.adult && c.crcl < 30 && m.kind !== 'mm') alerts.push(['warn', `CrCL ${f0(c.crcl)} mL/min. Unstable renal function and dialysis clearance are not modeled (except where the model has a dialysis term); re-check levels sooner.`]);
+  if (albF !== 1) alerts.push(['info', `Albumin ${c.alb} g/dL: total-level target adjusted to ${fd(T.lo)}–${fd(T.hi)} ${m.cu} (Sheiner–Tozer). Free phenytoin is preferred when available.`]);
+  if (m.kind === 'mm') alerts.push(['info', 'Phenytoin has saturable elimination: small dose changes can cause large level changes. Recheck levels 5–7 days after a change.']);
+  if (m.id === 'bu_mccune') alerts.push(['info', 'Busulfan clearance falls about 7–8% after the first day; the model uses first-dose clearance. Base dose adjustments on first-dose levels as per protocol.']);
+  if (m.status === 'reference') alerts.push(['info', 'This model uses textbook population values. Its typical predictions are approximate; levels carry most of the weight.']);
+  if (best && !best.ok) alerts.push(['bad', 'No regimen within the dosing rules reaches the target. Review the intervals, maximum dose or target.']);
+  if (plan && plan.ss.nonss) alerts.push(['bad', 'The planned dose rate exceeds the estimated Vmax; concentrations would keep rising without reaching steady state.']);
+  if (!alerts.length) alerts.push(['info', 'No issues found with the entered data.']);
+
+  last = { m, T, c, typ, F, pInd, samples, doses, obs, t0, cur, curEval, top, best, sel, plan, startMs, autoStart, alerts, err, om, route };
+  renderResults();
+}
+
+/* ---------- Results ---------- */
+function renderEmpty(msg) {
+  last = null;
+  $('#fitPill').innerHTML = '';
+  $('#tiles').innerHTML = `<div class="placeholder" style="grid-column:1/-1">${esc(msg)}</div>`;
+  ['#plotWrap', '#legend', '#opts', '#regOut', '#regTimes', '#fitTable', '#targetTxt'].forEach(s => $(s).innerHTML = '');
+  ['#rDose', '#rTau', '#rTinf', '#rStart'].forEach(s => { $(s).value = ''; });
+  $('#fitPanel').hidden = true;
+  $('#alerts').innerHTML = `<div class="alert info">${esc(msg)}</div>`;
+}
+function statusOf(v, T) { return v < T.lo ? 'below' : v > T.hi ? 'above' : 'in'; }
+function pillFor(st) { return st === 'in' ? '<span class="pill good">On target</span>' : st === 'below' ? '<span class="pill warn">Below target</span>' : '<span class="pill bad">Above target</span>'; }
+function halfLife(p) { if (p.kind === 'mm') return NaN; const d = PK.disp(p); return Math.LN2 / Math.min(...d.lam); }
+
+function renderResults() {
+  const L = last, { m, F, typ, pInd, T } = L, mk = METRIC[T.metric].key, unit = unitOf(m, T.metric);
+  $('#fitPill').innerHTML = F.prior ? '<span class="pill warn">A priori · no levels</span>' : `<span class="pill info">Bayesian · ${F.n} level${F.n > 1 ? 's' : ''}</span>`;
+  $('#targetTxt').textContent = `Target ${METRIC[T.metric].label} ${fd(T.lo)}–${fd(T.hi)} ${unit}${T.troughMax != null ? `, trough < ${T.troughMax}` : ''}`;
+  const ci = (i, base) => { const s = Math.sqrt(F.cov[i][i]); return [base * Math.exp(F.eta[i] - 1.645 * s), base * Math.exp(F.eta[i] + 1.645 * s)]; };
+  const [n0, n1] = m.etaNames, ci0 = ci(0, typ[n0]), ci1 = ci(1, typ[n1]);
+  let curTile = `<div class="tile"><span class="l">Current regimen</span><span class="v">–</span><span class="s">No doses recorded</span></div>`;
+  if (L.curEval) { const ce = L.curEval; curTile = `<div class="tile"><span class="l">Current · ${fd(ce.dose)} mg ${tauLbl(ce.tau)}</span><span class="v">${fc(ce.ss[mk])} <small>${METRIC[T.metric].label}</small></span><span class="s">${pillFor(statusOf(ce.ss[mk], T))}</span></div>`; }
+  if (m.kind === 'mm') {
+    const vd = x => x * 24;
+    $('#tiles').innerHTML = `
+      <div class="tile"><span class="l">Vmax</span><span class="v">${fc(vd(pInd.Vmax))} <small>mg/day</small></span><span class="s">90% CI ${fc(vd(ci0[0]))}–${fc(vd(ci0[1]))} · pop ${fc(vd(typ.Vmax))}</span></div>
+      <div class="tile"><span class="l">Km</span><span class="v">${fc(pInd.Km)} <small>${m.cu}</small></span><span class="s">90% CI ${fc(ci1[0])}–${fc(ci1[1])} · pop ${fc(typ.Km)}</span></div>
+      <div class="tile"><span class="l">Volume</span><span class="v">${fc(pInd.V)} <small>L</small></span><span class="s">fixed (${fc(pInd.V / L.c.wt)} L/kg)</span></div>
+      ${curTile}`;
+  } else {
+    const ths = L.samples.map(halfLife).sort((a, b) => a - b);
+    const apparent = m.routes.length === 1 && m.routes[0] === 'PO' ? '/F' : '';
+    $('#tiles').innerHTML = `
+      <div class="tile"><span class="l">Clearance${apparent}</span><span class="v">${fc(pInd.CL)} <small>L/h</small></span><span class="s">90% CI ${fc(ci0[0])}–${fc(ci0[1])} · pop ${fc(typ.CL)}</span></div>
+      <div class="tile"><span class="l">${pInd.Q > 0 && pInd.V2 > 0 ? 'Central volume' : 'Volume'}${apparent}</span><span class="v">${fc(pInd.V1)} <small>L</small></span><span class="s">90% CI ${fc(ci1[0])}–${fc(ci1[1])} · pop ${fc(typ.V1)}</span></div>
+      <div class="tile"><span class="l">${pInd.Q > 0 && pInd.V2 > 0 ? 'Terminal half-life' : 'Half-life'}</span><span class="v">${fc(halfLife(pInd))} <small>h</small></span><span class="s">90% CI ${fc(PK.quantile(ths, .05))}–${fc(PK.quantile(ths, .95))}</span></div>
+      ${curTile}`;
+  }
+
+  const isSel = o => L.sel && +L.sel.dose === o.dose && +L.sel.tau === o.tau;
+  const cell = (lbl, v, key) => { const cls = key === mk ? (v >= T.lo && v <= T.hi ? 'hit' : 'miss') : (key === 'cmin' && T.troughMax != null ? (v < T.troughMax ? 'hit' : 'miss') : ''); return `<div><span>${lbl}</span><b class="${cls}" style="font-weight:inherit">${fc(v)}</b></div>`; };
+  const third = mk === 'cavg' ? ['Css avg', 'cavg'] : ['AUC24', 'auc24'];
+  $('#opts').innerHTML = !L.top.length ? '<div class="placeholder">No intervals to evaluate. Add intervals under dosing rules.</div>' : `
+    <div class="opt headrow"><span>Regimen</span><span>Predicted at steady state (${m.cu}${third[1] === 'auc24' ? '; AUC ' + unitOf(m, 'AUC') : ''})</span><span>Chance of target</span><span></span></div>
+    ${L.top.map((o, i) => `<div class="opt${isSel(o) ? ' sel' : ''}">
+      <div class="rg">${fd(o.dose)} mg ${tauLbl(o.tau)}${i === 0 ? '<span class="tag">Best</span>' : ''}${o.capped ? '<span class="tag" style="color:var(--bad)">Max dose</span>' : ''}
+        <small>${o.route === 'PO' ? 'oral' : 'IV over ' + f1(o.tinf) + ' h'} · ${fd(o.dose / L.c.wt)} mg/kg/dose · ${fd(o.dose * 24 / o.tau)} mg/day</small></div>
+      <div class="ms">${cell(third[0], o.ss[third[1]], third[1])}${cell('Peak', o.ss.cmax, 'cmax')}${cell('Trough', o.ss.cmin, 'cmin')}</div>
+      <div class="pta"><span class="bar"><b style="width:${Math.round(o.pta * 100)}%"></b></span>${Math.round(o.pta * 100)}%</div>
+      <div class="act"><button class="btn small${isSel(o) ? ' primary' : ''}" type="button" data-use="${i}">${isSel(o) ? 'Selected' : 'Use'}</button></div>
+    </div>`).join('')}`;
+
+  const setIf = (id, v) => { const el = $(id); if (document.activeElement !== el) el.value = v; };
+  if (L.sel) { setIf('#rDose', L.sel.dose); setIf('#rTau', L.sel.tau); setIf('#rTinf', L.sel.tinf); }
+  setIf('#rStart', toLocal(L.startMs));
+  const rr = $('#rRoute');
+  rr.innerHTML = m.routes.map(r => `<option value="${r}"${r === L.route ? ' selected' : ''}>${r === 'PO' ? 'Oral' : 'IV'}</option>`).join('');
+  rr.disabled = m.routes.length < 2;
+  $('#rTinf').disabled = L.route === 'PO';
+  if (L.plan) {
+    const p = L.plan, st = statusOf(p.ss[mk], T);
+    $('#regOut').innerHTML = `
+      <div class="cell"><div class="l">${third[0]} (${third[1] === 'auc24' ? unitOf(m, 'AUC') : m.cu})</div><div class="v">${fc(p.ss[third[1]])}</div></div>
+      <div class="cell"><div class="l">Peak (${m.cu})</div><div class="v">${fc(p.ss.cmax)}</div></div>
+      <div class="cell"><div class="l">Trough (${m.cu})</div><div class="v">${fc(p.ss.cmin)}</div></div>
+      <div class="cell"><div class="l">Chance of target</div><div class="v">${Math.round(p.pta * 100)}%</div></div>`;
+    const times = [0, 1, 2, 3].map(i => clock(L.startMs + i * p.tau * 36e5));
+    $('#regTimes').innerHTML = `${pillFor(st)} &nbsp;Steady-state ${METRIC[T.metric].label} ${fc(p.ss[mk])} ${unit}${m.kind === 'mm' ? ' (average; Michaelis–Menten)' : ''}. Next doses: ${times.map(t => `<b>${t}</b>`).join(' · ')}`;
+  } else { $('#regOut').innerHTML = ''; $('#regTimes').textContent = 'Enter a dose and interval.'; }
+
+  $('#fitPanel').hidden = !L.obs.length;
+  if (L.obs.length) {
+    const ts = L.obs.map(o => o.t);
+    const pi = PK.predict(ts, L.doses, pInd), pp = PK.predict(ts, L.doses, F.P([0, 0]));
+    $('#fitTable').innerHTML = `<table><thead><tr><th>Sample time</th><th>Measured</th><th>Population pred.</th><th>Individual pred.</th><th>Difference</th></tr></thead><tbody>
+      ${L.obs.map((o, i) => { const sd = Math.sqrt(L.err.add ** 2 + (L.err.prop * pi[i]) ** 2), bad = o.use && Math.abs(o.c - pi[i]) / sd > 3;
+        return `<tr><td style="font-family:var(--f-ui)">${clock(o.ms)}${o.use ? '' : ' <span class="pill warn" style="font-size:10.5px">excluded</span>'}</td><td>${fc(o.c)}</td><td>${fc(pp[i])}</td><td>${fc(pi[i])}</td><td class="${bad ? 'flag' : ''}">${(o.c - pi[i] >= 0 ? '+' : '') + fc(o.c - pi[i])}</td></tr>`; }).join('')}
+      </tbody></table><p class="hint" style="margin-top:6px">Concentrations in ${m.cu}.</p>`;
+  }
+  $('#alerts').innerHTML = L.alerts.map(([lvl, t]) => `<div class="alert ${lvl}">${esc(t)}</div>`).join('');
+  drawPlot();
+}
+
+$('#opts').addEventListener('click', e => {
+  const b = e.target.closest('[data-use]'); if (!b || !last) return;
+  const o = last.top[+b.dataset.use]; state.sel = { dose: o.dose, tau: o.tau, tinf: o.tinf, route: o.route }; save(); compute();
+});
+['#rDose', '#rTau', '#rTinf'].forEach(id => $(id).addEventListener('input', () => {
+  state.sel = { dose: +$('#rDose').value, tau: +$('#rTau').value, tinf: +$('#rTinf').value || 0, route: $('#rRoute').value }; schedule();
+}));
+$('#rRoute').addEventListener('change', () => { state.sel = { route: $('#rRoute').value }; schedule(); });
+$('#rStart').addEventListener('change', () => { state.start = $('#rStart').value || null; schedule(); });
+$('#btnBest').addEventListener('click', () => { state.sel = state.sel?.route ? { route: state.sel.route } : null; state.start = null; save(); compute(); });
+
+/* ---------- Plot ---------- */
+function niceStep(range, n) { const raw = range / n, p = 10 ** Math.floor(Math.log10(raw)), f = raw / p; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * p; }
+function drawPlot() {
+  const L = last, wrap = $('#plotWrap'), m = L.m;
+  const W = Math.max(320, Math.round(wrap.clientWidth || 760)), Hh = W < 560 ? 250 : 320, ml = 52, mr = 14, mt = 16, mb = 40;
+  const H = 36e5, startH = (L.startMs - L.t0) / H, plan = L.plan, tau = plan ? plan.tau : 12;
+  const horizon = Math.max(48, 3 * tau, m.kind === 'mm' ? 120 : 0);
+  const fut = plan ? Array.from({ length: Math.ceil(horizon / tau) }, (_, i) => ({ t: startH + i * tau, amt: plan.dose, tinf: plan.tinf, route: plan.route })) : [];
+  const all = L.doses.concat(fut).sort((a, b) => a.t - b.t);
+  const tStart = Math.min(0, startH), tEnd = Math.max(startH + horizon, ...L.obs.map(o => o.t + 6), 24);
+  const N = m.kind === 'mm' ? 240 : 340, ts = Array.from({ length: N }, (_, i) => tStart + (tEnd - tStart) * i / (N - 1));
+  L.obs.forEach(o => ts.push(o.t)); all.forEach(d => ts.push(d.t + (d.tinf || 0)));
+  ts.sort((a, b) => a - b);
+  const ind = PK.predict(ts, all, L.pInd), pop = PK.predict(ts, all, L.F.P([0, 0]));
+  const S = L.samples.slice(0, m.kind === 'mm' ? 80 : 160), sampC = S.map(p => PK.predict(ts, all, p));
+  const lo = [], hi = [];
+  for (let j = 0; j < ts.length; j++) { const col = sampC.map(r => r[j]).sort((a, b) => a - b); lo.push(PK.quantile(col, .05)); hi.push(PK.quantile(col, .95)); }
+  const T = L.T;
+  let ymax = Math.max(...ind, ...pop, ...L.obs.map(o => o.c), (T.metric !== 'AUC' ? T.hi : 0)) * 1.15;
+  ymax = Math.max(ymax, Math.min(Math.max(...hi), ymax * 1.25));
+  if (!(ymax > 0) || !isFinite(ymax)) ymax = 1;
+  const ys = niceStep(ymax, 5); ymax = Math.ceil(ymax / ys) * ys || 1;
+  const X = t => ml + (t - tStart) / (tEnd - tStart) * (W - ml - mr);
+  const Y = c => mt + (1 - Math.min(c, ymax * 1.05) / ymax) * (Hh - mt - mb);
+  const path = arr => arr.map((c, j) => `${j ? 'L' : 'M'}${X(ts[j]).toFixed(1)},${Y(c).toFixed(1)}`).join('');
+  const band = path(hi) + ts.slice().reverse().map((t, j) => `L${X(t).toFixed(1)},${Y(lo[lo.length - 1 - j]).toFixed(1)}`).join('') + 'Z';
+  const span = tEnd - tStart, pxPerH = (W - ml - mr) / span, stepH = [6, 12, 24, 48, 96, 168].find(s => s * pxPerH >= 52) || 168;
+  const first = new Date(L.t0 + tStart * H); first.setMinutes(0, 0, 0); first.setHours(Math.ceil(first.getHours() / Math.min(stepH, 24)) * Math.min(stepH, 24));
+  const xt = []; for (let ms = first.getTime(); ms <= L.t0 + tEnd * H; ms += stepH * H) xt.push(ms);
+  const dec = ys < 0.1 ? 2 : ys < 1 ? 1 : 0;
+  let g = '';
+  for (let v = 0; v <= ymax + 1e-9; v += ys) g += `<line x1="${ml}" x2="${W - mr}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${ml - 7}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="var(--f-num)">${v.toFixed(dec)}</text>`;
+  xt.forEach(ms => { const d = new Date(ms), x = X((ms - L.t0) / H), midn = d.getHours() === 0;
+    g += `<line x1="${x}" x2="${x}" y1="${mt}" y2="${Hh - mb}" stroke="var(--line)" stroke-width="${midn ? 1 : .5}" ${midn ? '' : 'stroke-dasharray="2 3"'}/>`;
+    g += `<text x="${x}" y="${Hh - mb + 15}" text-anchor="middle" font-size="10.5" fill="var(--muted)" font-family="var(--f-num)">${midn ? d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : pad(d.getHours()) + ':00'}</text>`; });
+  let targ = '';
+  if (T.metric !== 'AUC') targ += `<rect x="${ml}" width="${W - ml - mr}" y="${Y(T.hi)}" height="${Math.max(0, Y(T.lo) - Y(T.hi))}" fill="var(--target)"/><text x="${W - mr - 4}" y="${Y(T.hi) + 12}" text-anchor="end" font-size="10.5" fill="var(--good)">${METRIC[T.metric].label} target</text>`;
+  if (T.troughMax != null) targ += `<line x1="${ml}" x2="${W - mr}" y1="${Y(T.troughMax)}" y2="${Y(T.troughMax)}" stroke="var(--bad)" stroke-dasharray="5 4" stroke-width="1"/><text x="${W - mr - 4}" y="${Y(T.troughMax) - 4}" text-anchor="end" font-size="10.5" fill="var(--bad)">trough limit</text>`;
+  const futX = X(startH), nowT = (Date.now() - L.t0) / H;
+  const nowLine = nowT > tStart && nowT < tEnd ? `<line x1="${X(nowT)}" x2="${X(nowT)}" y1="${mt}" y2="${Hh - mb}" stroke="var(--ink)" stroke-width="1" opacity=".55"/><text x="${X(nowT) + 4}" y="${mt + 10}" font-size="10.5" fill="var(--ink)" opacity=".7">now</text>` : '';
+  const doseMarks = all.map(d => { const x = X(d.t), y = Hh - mb, f = fut.includes(d); return `<path d="M${x - 4},${y} L${x + 4},${y} L${x},${y - 7}Z" fill="${f ? 'var(--surface)' : 'var(--accent)'}" stroke="var(--accent)" stroke-width="1.2"/>`; }).join('');
+  const obsMarks = L.obs.map(o => `<circle cx="${X(o.t)}" cy="${Y(o.c)}" r="5" fill="${o.use ? 'var(--obs)' : 'var(--surface)'}" stroke="var(--obs)" stroke-width="1.8"/>`).join('');
+  wrap.innerHTML = `<svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Concentration–time profile with measured levels and the planned regimen">
+    <defs><clipPath id="clipA"><rect x="${ml}" y="${mt}" width="${W - ml - mr}" height="${Hh - mt - mb}"/></clipPath></defs>
+    <rect x="${futX}" y="${mt}" width="${Math.max(0, W - mr - futX)}" height="${Hh - mt - mb}" fill="var(--sunk)" opacity=".7"/>
+    <text x="${futX + 6}" y="${Hh - mb - 12}" font-size="10.5" fill="var(--muted)" font-weight="600">PLANNED</text>
+    ${g}${targ}
+    <g clip-path="url(#clipA)">
+      <path d="${band}" fill="var(--band)" stroke="none"/>
+      <path d="${path(pop)}" fill="none" stroke="var(--pop)" stroke-width="1.4" stroke-dasharray="5 4"/>
+      <path d="${path(ind)}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round"/>
+    </g>
+    ${nowLine}${doseMarks}${obsMarks}
+    <line x1="${ml}" x2="${W - mr}" y1="${Hh - mb}" y2="${Hh - mb}" stroke="var(--muted)" stroke-width="1"/>
+    <text x="14" y="${mt + (Hh - mt - mb) / 2}" transform="rotate(-90 14 ${mt + (Hh - mt - mb) / 2})" text-anchor="middle" font-size="11" fill="var(--muted)">Concentration (${m.cu})</text>
+    <line id="hov" x1="0" x2="0" y1="${mt}" y2="${Hh - mb}" stroke="var(--ink)" stroke-width="1" opacity="0"/>
+    <circle id="hovDot" r="4" fill="var(--accent)" opacity="0"/>
+  </svg><div class="tip" id="tip" hidden></div>`;
+  $('#legend').innerHTML = `<span><i style="border-color:var(--accent)"></i>Individual prediction</span><span><i class="box" style="background:var(--band)"></i>90% prediction interval</span><span><i style="border-color:var(--pop);border-top-style:dashed"></i>Population (typical patient)</span><span><i class="dot" style="background:var(--obs)"></i>Measured level</span><span><i class="dot" style="background:var(--accent);border-radius:0;width:8px;height:8px;clip-path:polygon(50% 0,100% 100%,0 100%)"></i>Dose</span>`;
+  const svg = wrap.querySelector('svg'), tip = $('#tip'), hov = svg.querySelector('#hov'), dot = svg.querySelector('#hovDot');
+  const leave = () => { tip.hidden = true; hov.setAttribute('opacity', '0'); dot.setAttribute('opacity', '0'); };
+  svg.addEventListener('pointermove', ev => {
+    const r = svg.getBoundingClientRect(), sx = (ev.clientX - r.left) / r.width * W;
+    if (sx < ml || sx > W - mr) { leave(); return; }
+    const t = tStart + (sx - ml) / (W - ml - mr) * (tEnd - tStart);
+    let j = 0, bd = 1e9; ts.forEach((v, i) => { const d = Math.abs(v - t); if (d < bd) { bd = d; j = i; } });
+    hov.setAttribute('x1', X(ts[j])); hov.setAttribute('x2', X(ts[j])); hov.setAttribute('opacity', '.35');
+    dot.setAttribute('cx', X(ts[j])); dot.setAttribute('cy', Y(ind[j])); dot.setAttribute('opacity', '1');
+    tip.hidden = false;
+    tip.innerHTML = `<b>${clock(L.t0 + ts[j] * H)}</b><br>Individual <span class="num">${fc(ind[j])}</span> ${m.cu}<br><span style="color:var(--muted)">90% PI <span class="num">${fc(lo[j])}–${fc(hi[j])}</span></span>`;
+    const px = X(ts[j]) / W * r.width, py = Y(ind[j]) / Hh * r.height, tw = tip.offsetWidth;
+    tip.style.left = Math.min(Math.max(px - tw / 2, 0), r.width - tw) + 'px'; tip.style.top = Math.max(py - tip.offsetHeight - 12, 0) + 'px';
+  });
+  svg.addEventListener('pointerleave', leave);
+}
+
+/* ---------- Library ---------- */
+function showLibrary() {
+  const o = document.createElement('div'); o.className = 'overlay';
+  const rows = Object.values(MODELS).map(m => `<tr><td><b>${esc(m.drug)}</b><br><span class="hint">${esc(m.pop)}</span></td><td style="font-family:var(--f-ui);white-space:normal">${esc(m.struct)}<br><span class="hint">Target ${METRIC[m.target.metric].label} ${fd(m.target.lo)}–${fd(m.target.hi)} ${unitOf(m, m.target.metric)}</span></td><td style="font-family:var(--f-ui)">${badge(m.status)}</td><td style="font-family:var(--f-ui);white-space:normal;min-width:220px">${esc(m.ref)}</td><td><button class="btn small" type="button" data-pick="${m.id}">Use</button></td></tr>`).join('');
+  o.innerHTML = `<div class="sheet wide"><div class="step-h"><div class="t"><h2>Model library</h2></div><button class="btn small" type="button" data-close>Close</button></div>
+    <p class="hint">Source-checked: equations compared with the publication. Partly checked: structural model checked, some terms assumed. Textbook values: typical clinical PK parameters with assumed variability; verify before use.</p>
+    <div class="tbl-wrap lib"><table><thead><tr><th>Drug · population</th><th>Model</th><th>Status</th><th>Source</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  document.body.appendChild(o);
+  o.addEventListener('click', e => {
+    const p = e.target.closest('[data-pick]');
+    if (p) { o.remove(); switchModel(p.dataset.pick); return; }
+    if (e.target === o || e.target.closest('[data-close]')) o.remove();
+  });
+}
+
+/* ---------- Summary ---------- */
+function summaryText() {
+  if (!last) return 'MIPD summary: patient data incomplete.';
+  const L = last, m = L.m, c = L.c, T = L.T, mk = METRIC[T.metric].key, p = state.patient, unit = unitOf(m, T.metric);
+  const lines = [];
+  lines.push(`MIPD dosing summary — ${m.drug}${p.label ? ' — ' + p.label : ''}`);
+  lines.push(`Generated ${clock(Date.now())}`, '');
+  lines.push(`Patient: ${p.age} ${p.ageUnit === 'y' ? 'y' : p.ageUnit === 'm' ? 'mo' : 'd'}, ${p.sex === 'F' ? 'female' : 'male'}, ${p.wt} kg, ${p.ht} cm, SCr ${p.scr} mg/dL`);
+  lines.push(c.adult ? `Renal function: CrCL ${f0(c.crcl)} mL/min (Cockcroft–Gault, ${c.basis} ${f1(c.dw)} kg)` : `Renal function: bedside Schwartz eGFR ${f0(c.egfr)} mL/min/1.73m²${c.ageY < 2 ? `; PMA ${f1(c.pma)} wk` : ''}`);
+  m.covs.forEach(k => { const v = state.x[k] ?? XCOV[k].def; if (v !== '' && v != null) lines.push(`${XCOV[k].label}: ${XCOV[k].type === 'chk' ? (v ? 'yes' : 'no') : XCOV[k].type === 'sel' ? XCOV[k].opts.find(o => o[0] === v)?.[1] : v}`); });
+  lines.push(`Model: ${m.drug} — ${m.pop}. ${m.ref} [${STATUS[m.status]?.[1] || ''}]`, '');
+  if (L.cur) lines.push(`Doses: ${L.doses.length} recorded, last ${fd(L.cur.dose)} mg ${routeLbl(L.cur.route)} at ${clock(L.cur.lastMs)} (${tauLbl(L.cur.tau)})`);
+  if (L.obs.length) { const pr = PK.predict(L.obs.map(o => o.t), L.doses, L.pInd); L.obs.forEach((o, i) => lines.push(`Level: ${fc(o.c)} ${m.cu} at ${clock(o.ms)}${o.use ? '' : ' (excluded)'} — individual prediction ${fc(pr[i])}`)); }
+  lines.push('');
+  const est = L.F.prior ? 'A priori estimate (no levels)' : 'Bayesian (MAP) estimate';
+  if (m.kind === 'mm') lines.push(`${est}: Vmax ${fc(L.pInd.Vmax * 24)} mg/day, Km ${fc(L.pInd.Km)} ${m.cu}, V ${fc(L.pInd.V)} L`);
+  else lines.push(`${est}: CL ${fc(L.pInd.CL)} L/h, V ${fc(L.pInd.V1)} L, t½ ${fc(halfLife(L.pInd))} h`);
+  if (L.curEval) lines.push(`Current regimen ${fd(L.curEval.dose)} mg ${tauLbl(L.curEval.tau)}: predicted steady-state ${METRIC[T.metric].label} ${fc(L.curEval.ss[mk])} ${unit}`);
+  lines.push(`Target: ${METRIC[T.metric].label} ${fd(T.lo)}–${fd(T.hi)} ${unit}${T.troughMax != null ? `, trough < ${T.troughMax} ${m.cu}` : ''}`);
+  if (L.plan) {
+    const r = L.plan;
+    lines.push(`Planned regimen: ${fd(r.dose)} mg ${tauLbl(r.tau)} ${r.route === 'PO' ? 'orally' : `IV over ${f1(r.tinf)} h`}, first dose ${clock(L.startMs)}`);
+    lines.push(`Predicted steady state: AUC24 ${fc(r.ss.auc24)} ${unitOf(m, 'AUC')}, peak ${fc(r.ss.cmax)} ${m.cu}, trough ${fc(r.ss.cmin)} ${m.cu}; probability of target ${Math.round(r.pta * 100)}%`);
+  }
+  const notes = L.alerts.filter(a => a[0] !== 'info' || L.F.prior).map(a => a[1]);
+  if (notes.length) { lines.push('', 'Notes:'); notes.forEach(w => lines.push('- ' + w)); }
+  lines.push('', 'Decision support only. Verify inputs and apply clinical judgment.');
+  return lines.join('\n');
+}
+function toast(msg) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
+function showSheet(text) {
+  const o = document.createElement('div'); o.className = 'overlay';
+  o.innerHTML = `<div class="sheet"><h2>Summary for the chart</h2><p class="hint">Select all and copy.</p><textarea readonly></textarea><div><button class="btn primary" type="button">Close</button></div></div>`;
+  o.querySelector('textarea').value = text; document.body.appendChild(o);
+  const ta = o.querySelector('textarea'); ta.focus(); ta.select();
+  o.querySelector('button').addEventListener('click', () => o.remove());
+  o.addEventListener('click', e => { if (e.target === o) o.remove(); });
+}
+$('#btnCopy').addEventListener('click', () => {
+  const text = summaryText();
+  try { navigator.clipboard.writeText(text).then(() => toast('Summary copied'), () => showSheet(text)); } catch (e) { showSheet(text); }
+});
+const newCase = () => { state = blankCase(state.modelId); renderAll(); };
+$('#btnNew').addEventListener('click', newCase);
+$('#btnNew2').addEventListener('click', newCase);
+$('#btnExample').addEventListener('click', () => { state = exampleCase(); renderAll(); });
+
+/* ---------- Tabs (phones) ---------- */
+function setTab(t) { document.body.dataset.tab = t; $('#tabIn').setAttribute('aria-selected', t === 'inputs'); $('#tabOut').setAttribute('aria-selected', t === 'results'); window.scrollTo(0, 0); if (t === 'results' && last) setTimeout(drawPlot, 0); }
+$('#tabIn').addEventListener('click', () => setTab('inputs'));
+$('#tabOut').addEventListener('click', () => setTab('results'));
+$('#btnSee').addEventListener('click', () => setTab('results'));
+const mq = window.matchMedia('(max-width: 959px)');
+const syncSee = () => { $('#btnSee').style.display = mq.matches ? '' : 'none'; };
+mq.addEventListener ? mq.addEventListener('change', syncSee) : mq.addListener(syncSee);
+document.body.dataset.tab = 'inputs';
+let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (last) drawPlot(); }, 150); });
+
+function renderAll() { renderPatient(); renderModel(); renderDoses(); renderLevels(); syncSee(); save(); compute(); }
+renderAll();
+
+</script>
+<script>
+/* cincydose.org: signed-in session badge, keep-alive and sign-out */
+(async () => {
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let me = null;
+  try { const r = await fetch('/api/me', { credentials: 'same-origin' }); if (r.ok) me = await r.json(); } catch (e) { }
+  if (!me) { location.href = '/login?next=/app'; return; }
+  const bar = document.querySelector('.actions');
+  if (bar) {
+    const d = document.createElement('div'); d.className = 'acct';
+    d.innerHTML = '<span class="acct-n">Signed in as <b>' + esc(me.name) + '</b></span><a class="btn" href="/account">Account</a>' + (me.admin ? '<a class="btn" href="/admin">Admin</a>' : '') + '<button class="btn" type="button" id="acctOut">Sign out</button>';
+    bar.prepend(d);
+    document.getElementById('acctOut').onclick = async () => { try { await fetch('/api/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: '{}' }); } catch (e) { } location.href = '/login?m=out'; };
+  }
+  let lastPing = Date.now(), lastAct = Date.now();
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { lastAct = Date.now(); }, { passive: true }));
+  setInterval(async () => {
+    if (lastAct > lastPing) { lastPing = Date.now(); try { const r = await fetch('/api/me', { credentials: 'same-origin' }); if (r.status === 401) location.href = '/login?m=expired&next=/app'; } catch (e) { } }
+    else if (Date.now() - lastAct > (me.idleMinutes || 30) * 60000) location.href = '/login?m=expired&next=/app';
+  }, 60000);
+})();
+</script>
+<style>.acct{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.acct-n{font-size:12.5px;color:var(--muted)}.acct a.btn{text-decoration:none}</style>
+</body>
+</html>

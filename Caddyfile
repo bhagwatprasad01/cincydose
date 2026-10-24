@@ -1,0 +1,8 @@
+cincydose.org {
+	encode gzip zstd
+	reverse_proxy app:8080
+}
+
+www.cincydose.org {
+	redir https://cincydose.org{uri} permanent
+}
